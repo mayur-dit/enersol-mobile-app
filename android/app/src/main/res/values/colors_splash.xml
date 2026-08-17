@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base declaration so the resource resolves in every configuration; the
+         light splash uses @android:color/white and never reads this, but a
+         night-only colour would crash if queried elsewhere. -->
+    <color name="splash_background_night">#0B0E15</color>
+</resources>

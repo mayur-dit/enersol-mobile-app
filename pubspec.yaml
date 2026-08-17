@@ -1,0 +1,72 @@
+name: enersol_customer
+description: "Enersol Customer App — track your solar application, documents, service and generation."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State
+  provider: ^6.1.2
+
+  # Network
+  http: ^1.2.2
+  # The live half of notifications: a plain WebSocket carrying API Maker's
+  # REGISTER/NOTIFICATION protocol, the same one the two web shells speak.
+  web_socket_channel: ^3.0.3
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+
+  # Biometric login
+  local_auth: ^2.3.0
+
+  # UI
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.0.16
+  google_fonts: ^6.2.1
+  fl_chart: ^0.69.2
+
+  # Push notifications. FCM delivers when the app is backgrounded or closed;
+  # flutter_local_notifications is what draws the banner for a message that
+  # arrives while it is OPEN, which FCM deliberately does not do itself.
+  firebase_core: ^4.12.1
+  firebase_messaging: ^16.4.3
+  flutter_local_notifications: ^22.2.0
+
+  # Utils
+  package_info_plus: ^8.1.2
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  file_picker: ^11.0.3
+  image_picker: ^1.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.2
+
+# Launcher icon. Regenerate with: dart run flutter_launcher_icons
+#
+# The mark sits on white because the bulb path is drawn at ~70% opacity — it is
+# built for a light ground (see enersol-logo-white-bg.svg) and goes muddy on a
+# dark one. `android: true` overwrites ic_launcher, which is what the manifest
+# already points at.
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  android: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  ios: true
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo/
