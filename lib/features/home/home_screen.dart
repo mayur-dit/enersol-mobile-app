@@ -43,11 +43,18 @@ class _HomeScreenState extends State<HomeScreen> with ScreenRefresh {
     final repo = context.read<CustomerRepository>();
     // Generation is absent until a system is commissioned and syncing, so it is
     // fetched alongside rather than gating the rest of the screen.
-    final results = await Future.wait([repo.applications(), repo.generation()]);
-    return (
-      results[0] as List<SolarApplication>,
-      results[1] as GenerationSummary?,
+    //
+    // AND IT MUST NOT BE ABLE TO FAIL THE SCREEN. `Future.wait` rejects as soon
+    // as EITHER side throws, so a meter read that errored — the half of this
+    // pair nothing on Home depends on — put "Couldn't load" over a project that
+    // had come back perfectly well. Swallowing it to null lands on the same
+    // branch as a system that is not commissioned yet: the generation strip is
+    // simply absent, and the rest of the screen is the rest of the screen.
+    final apps = repo.applications();
+    final gen = repo.generation().catchError(
+      (_) => null as GenerationSummary?,
     );
+    return (await apps, await gen);
   }
 
   @override
@@ -79,17 +86,18 @@ class _HomeScreenState extends State<HomeScreen> with ScreenRefresh {
           // application — start one", which tells a customer with a live
           // project on a bad connection that their project does not exist.
           if (!loading && snap.hasError) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                16,
-                60,
-                16,
-                shellBottomInset(context, extra: 24),
+            // NOT wrapped in a ListView. `ErrorRetry` carries its own scroll
+            // now (so pull-to-refresh works on a screen showing nothing), and
+            // nesting one vertical viewport in another is an unbounded-height
+            // assertion — every frame, thousands of them, over a red screen.
+            // The one branch a customer reaches when the network is down was
+            // the one branch that could not draw.
+            return Padding(
+              padding: EdgeInsets.only(bottom: shellBottomInset(context)),
+              child: ErrorRetry(
+                message: friendlyError(snap.error),
+                onRetry: refreshNow,
               ),
-              children: [
-                ErrorRetry(message: friendlyError(snap.error), onRetry: refreshNow),
-              ],
             );
           }
 

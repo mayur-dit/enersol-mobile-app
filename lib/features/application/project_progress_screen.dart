@@ -51,19 +51,23 @@ class _ProjectProgressScreenState extends State<ProjectProgressScreen>
   /// app contradicts its own notification.
   Future<(SolarApplication, List<DocumentRequest>)> _load() async {
     final repo = context.read<CustomerRepository>();
-    final results = await Future.wait([
-      repo.applications(),
-      repo.documentRequests(
-        projectId: widget.application.projectId ?? '',
-      ),
-    ]);
 
-    final apps = results[0] as List<SolarApplication>;
+    // THE LADDER IS THE SCREEN; the blockers are an annotation on it. A
+    // `Future.wait` over both fails the pair the moment either throws, so a
+    // document-requests read that errored took the customer's whole progress
+    // view with it and answered "why has my project not moved?" with
+    // "Couldn't load". An empty blocker list simply drops the banner.
+    final fetched = repo.applications();
+    final requests = repo
+        .documentRequests(projectId: widget.application.projectId ?? '')
+        .catchError((_) => const <DocumentRequest>[]);
+
+    final apps = await fetched;
     final fresh = apps
             .where((a) => a.reference == widget.application.reference)
             .firstOrNull ??
         widget.application;
-    return (fresh, results[1] as List<DocumentRequest>);
+    return (fresh, await requests);
   }
 
   @override
@@ -76,9 +80,9 @@ class _ProjectProgressScreenState extends State<ProjectProgressScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Project progress')),
-      body: RefreshIndicator(
+    return PageScaffold(
+      title: 'PROJECT PROGRESS',
+      child: RefreshIndicator(
         onRefresh: refreshNow,
         color: AppColors.ember,
         child: FutureBuilder<(SolarApplication, List<DocumentRequest>)>(

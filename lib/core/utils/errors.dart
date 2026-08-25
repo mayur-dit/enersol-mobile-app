@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../api/api_client.dart';
 
 /// The sentence to show a customer for a failed load.
@@ -14,5 +16,10 @@ String friendlyError(Object? error, {String fallback = 'Something went wrong. Pl
     final message = error.message.trim();
     return message.isEmpty ? fallback : message;
   }
+  // Anything that is NOT an ApiException never reached the network — the client
+  // wraps every transport failure itself. The customer still gets the fallback
+  // sentence, but the real cause is logged so a device-only fault (a plugin
+  // channel, secure storage) is diagnosable from a release build.
+  debugPrint('Unhandled ${error.runtimeType}: $error');
   return fallback;
 }

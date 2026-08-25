@@ -5,9 +5,21 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
 
+    <!-- allowBackup is OFF deliberately, and it is a correctness fix, not just a
+         privacy one. Android's auto-backup copies SharedPreferences — including
+         the ciphertext flutter_secure_storage keeps the session and the
+         biometric vault in — but it CANNOT copy the hardware-backed Keystore key
+         that encrypted them. Restoring onto a new device (or reinstalling) then
+         leaves blobs no key can open, and every read throws
+         `BadPaddingException: BAD_DECRYPT`. AuthService now survives that, but
+         there is no reason to keep manufacturing it — nor to ship a customer's
+         auth tokens off the device in the first place. -->
     <application
         android:label="Enersol"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

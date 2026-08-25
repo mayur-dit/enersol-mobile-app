@@ -44,6 +44,57 @@ class AuthService extends ChangeNotifier {
   static const _kBioUser = 'enersol_bio_user';
   static const _kBioSession = 'enersol_bio_session';
 
+  // ── Guarded secure storage ───────────────────────────────────────────────
+  //
+  // Every read/write/delete goes through these three, never through [_storage]
+  // directly. flutter_secure_storage throws a PlatformException on Android
+  // whenever the Keystore key and the ciphertext in SharedPreferences no longer
+  // belong together — `javax.crypto.BadPaddingException: BAD_DECRYPT`. That is
+  // not a corrupt-data edge case, it is the ordinary consequence of a reinstall
+  // or a device-to-device restore: the encrypted blob is backed up, the
+  // hardware-backed key that wrote it is not.
+  //
+  // Only [restore] used to guard for this, which is exactly why the app could
+  // come up on a restored session and then fail the next manual sign-in: the
+  // unguarded read of the biometric key in [login] threw AFTER the password had
+  // already been accepted, and the screen could only report "Something went
+  // wrong".
+
+  /// Reads one key, treating an entry that cannot be decrypted as absent.
+  ///
+  /// The entry is DELETED rather than left in place: BAD_DECRYPT is permanent —
+  /// no key will ever open that blob again — so keeping it would fail the same
+  /// way on every launch.
+  static Future<String?> _read(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      await _delete(key);
+      return null;
+    }
+  }
+
+  /// Writes one key; a storage failure must not fail the caller.
+  ///
+  /// A sign-in the server accepted is still a sign-in. The only cost of a failed
+  /// write is that the session is not remembered past this launch — far better
+  /// than refusing entry to an app the credentials were valid for.
+  static Future<void> _write(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {
+      // Deliberately swallowed — see above.
+    }
+  }
+
+  static Future<void> _delete(String key) async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {
+      // Nothing left to do if even removal fails.
+    }
+  }
+
   final LocalAuthentication _localAuth = LocalAuthentication();
 
   Session? _session;
@@ -59,7 +110,7 @@ class AuthService extends ChangeNotifier {
   /// Reads any persisted session so a returning user lands straight on Home.
   Future<void> restore() async {
     try {
-      final raw = await _storage.read(key: _kSession);
+      final raw = await _read(_kSession);
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
         if (decoded is Map) {
@@ -68,7 +119,7 @@ class AuthService extends ChangeNotifier {
       }
     } catch (_) {
       // A corrupt blob must never wedge the app on the splash screen.
-      await _storage.delete(key: _kSession);
+      await _delete(_kSession);
       _session = null;
     }
     _restoring = false;
@@ -141,14 +192,14 @@ class AuthService extends ChangeNotifier {
     );
 
     _adopt(built);
-    await _storage.write(key: _kSession, value: jsonEncode(built.toJson()));
+    await _write(_kSession, jsonEncode(built.toJson()));
 
     // Keep an armed biometric vault fresh. It is scoped to a username rather
     // than "biometric is on" because enabling it always arms it for whoever is
     // signed in AT THAT MOMENT (see enableBiometric) — a plain password
     // sign-in as someone else must not silently overwrite a different
     // account's saved fingerprint entry.
-    final bioUser = await _storage.read(key: _kBioUser);
+    final bioUser = await _read(_kBioUser);
     if (bioUser == built.user.userName) {
       await _writeBiometricVault(built);
     }
@@ -168,7 +219,7 @@ class AuthService extends ChangeNotifier {
     );
     _session = null;
     _api.clearTokens();
-    await _storage.delete(key: _kSession);
+    await _delete(_kSession);
     notifyListeners();
   }
 
@@ -219,7 +270,7 @@ class AuthService extends ChangeNotifier {
 
   /// True once the user has opted in AND a session is stored for it.
   Future<bool> biometricEnrolled() async {
-    final raw = await _storage.read(key: _kBioSession);
+    final raw = await _read(_kBioSession);
     return raw?.isNotEmpty ?? false;
   }
 
@@ -248,13 +299,13 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _writeBiometricVault(Session session) async {
-    await _storage.write(key: _kBioSession, value: jsonEncode(session.toJson()));
-    await _storage.write(key: _kBioUser, value: session.user.userName);
+    await _write(_kBioSession, jsonEncode(session.toJson()));
+    await _write(_kBioUser, session.user.userName);
   }
 
   Future<void> disableBiometric() async {
-    await _storage.delete(key: _kBioSession);
-    await _storage.delete(key: _kBioUser);
+    await _delete(_kBioSession);
+    await _delete(_kBioUser);
     notifyListeners();
   }
 
@@ -264,7 +315,7 @@ class AuthService extends ChangeNotifier {
   /// tampered with) it is cleared so the next attempt asks for a password
   /// rather than failing the same way forever.
   Future<void> loginWithBiometric() async {
-    final raw = await _storage.read(key: _kBioSession);
+    final raw = await _read(_kBioSession);
     if (raw == null || raw.isEmpty) {
       throw ApiException('Biometric sign-in is not set up on this device.');
     }
@@ -282,7 +333,7 @@ class AuthService extends ChangeNotifier {
     }
 
     _adopt(restored);
-    await _storage.write(key: _kSession, value: jsonEncode(restored.toJson()));
+    await _write(_kSession, jsonEncode(restored.toJson()));
     notifyListeners();
   }
 

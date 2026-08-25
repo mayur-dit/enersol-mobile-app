@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// The Enersol design system, ported from the admin panel's `styles.scss`.
@@ -133,6 +134,27 @@ class AppTheme {
   static ThemeData light() => _build(Brightness.light);
   static ThemeData dark() => _build(Brightness.dark);
 
+  /// The system bars for a given scheme — dark glyphs on the light backdrop,
+  /// light glyphs on the dark one.
+  ///
+  /// Android and iOS name this the opposite way round: `statusBarIconBrightness`
+  /// is the brightness OF THE ICONS, `statusBarBrightness` the brightness of
+  /// what sits BEHIND them. Both are set, so the bars are right on either OS.
+  static SystemUiOverlayStyle overlayStyle(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: isDark
+          ? AppColors.darkChrome
+          : AppColors.lightBackdrop.last,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarDividerColor: Colors.transparent,
+    );
+  }
+
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
 
@@ -179,6 +201,13 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        // MUST BE EXPLICIT. Left unset, Material derives the status-bar icon
+        // colour from `backgroundColor` — and a TRANSPARENT bar reads as
+        // luminance 0, i.e. "dark", so it asked for WHITE icons and they
+        // disappeared into the light backdrop. Worse, the style is global and
+        // sticky: opening one of these screens turned the icons white for the
+        // whole app, including every screen that draws [AppHeader] instead.
+        systemOverlayStyle: overlayStyle(brightness),
         iconTheme: IconThemeData(color: text1),
         titleTextStyle: baseText.titleMedium?.copyWith(
           color: text1,

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/data/customer_repository.dart';
 import '../../core/state/notification_service.dart';
 import '../../core/state/screen_refresh.dart';
+import '../../core/state/shell_controller.dart';
 import '../../core/theme/app_theme.dart';
 import '../../features/application/application_screen.dart';
 import '../../features/documents/documents_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/service/service_screen.dart';
 import 'app_backdrop.dart';
 import 'app_drawer.dart';
 import 'app_header.dart';
+import 'confirm_dialog.dart';
 
 /// Footer destinations, in the order they appear.
 ///
@@ -61,6 +63,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   StreamSubscription<String>? _routeSub;
 
+  /// The handle pushed screens drive the tabs through — see [ShellController].
+  late final ShellController _shell;
+
   static const _titles = [
     'HOME',
     'APPLICATION',
@@ -84,6 +89,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    // Screens pushed OVER the shell are siblings of it, not descendants, so
+    // this is how their drawer and their header reach these five tabs. HELD as
+    // a field because `dispose` needs it too, and by then this element is
+    // deactivated — reading a provider off the context there throws.
+    _shell = context.read<ShellController>();
+    _shell.attach(_select);
+
     // The shell exists only when there is a session, which makes it the right
     // and only place to bring notifications up. Deferred one frame so the first
     // build is not competing with a socket handshake and an FCM registration.
@@ -97,6 +109,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _shell.detach(_select);
     _routeSub?.cancel();
     _visible.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -134,15 +147,45 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     );
   }
 
-  /// Back leaves the current tab for Home. On Home itself the arrow is hidden,
-  /// so this never becomes a no-op button.
-  void _back() {
+  /// True while the exit question is on screen, so a second back press does not
+  /// stack a second copy of it behind the first.
+  bool _asking = false;
+
+  /// EVERY back press in the shell, from the header arrow and from the system
+  /// gesture alike, in the order the user expects them undone:
+  ///
+  ///   1. an open drawer closes — Flutter's [DrawerController] does not watch
+  ///      the back button itself, so without this the drawer stayed open while
+  ///      the screen behind it changed tab;
+  ///   2. a pushed screen pops;
+  ///   3. any other tab returns to Home, the way Android's own apps walk back
+  ///      to their start destination;
+  ///   4. Home asks before closing the app.
+  Future<void> _back() async {
+    final drawer = _drawerKey.currentState;
+    if (drawer != null && drawer.isDrawerOpen) {
+      drawer.closeDrawer();
+      return;
+    }
+
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
       return;
     }
-    _select(ShellTab.home);
+
+    if (_index != ShellTab.home) {
+      _select(ShellTab.home);
+      return;
+    }
+
+    if (_asking) return;
+    _asking = true;
+    try {
+      await confirmExit(context);
+    } finally {
+      if (mounted) _asking = false;
+    }
   }
 
   @override
@@ -150,11 +193,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final onHome = _index == ShellTab.home;
     final unread = context.watch<NotificationService>().unread;
 
-    // Android back should walk to Home before leaving the app.
+    // Back is never allowed to leave on its own: [_back] decides what this
+    // press actually means, up to and including asking whether to close the
+    // app. There is nothing under this route to pop to in any case.
     return PopScope(
-      canPop: onHome,
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _select(ShellTab.home);
+        if (!didPop) _back();
       },
       child: Scaffold(
         key: _drawerKey,
@@ -209,7 +254,7 @@ class _FooterNav extends StatelessWidget {
     (
       icon: Icons.description_outlined,
       active: Icons.description_rounded,
-      label: 'Apply'
+      label: 'Apply',
     ),
     (icon: Icons.bolt_outlined, active: Icons.bolt_rounded, label: 'Power'),
     (icon: Icons.folder_outlined, active: Icons.folder_rounded, label: 'Docs'),
@@ -264,8 +309,7 @@ class _FooterNav extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           gradient: selected ? AppColors.brand : null,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.pill),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Icon(
                           selected ? item.active : item.icon,
@@ -273,8 +317,8 @@ class _FooterNav extends StatelessWidget {
                           color: selected
                               ? Colors.white
                               : (isDark
-                                  ? AppColors.darkText3
-                                  : AppColors.lightText3),
+                                    ? AppColors.darkText3
+                                    : AppColors.lightText3),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -282,13 +326,14 @@ class _FooterNav extends StatelessWidget {
                         item.label,
                         style: TextStyle(
                           fontSize: 10.5,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: selected
                               ? AppColors.ember
                               : (isDark
-                                  ? AppColors.darkText3
-                                  : AppColors.lightText3),
+                                    ? AppColors.darkText3
+                                    : AppColors.lightText3),
                         ),
                       ),
                     ],

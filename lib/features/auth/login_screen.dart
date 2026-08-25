@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/utils/focus_first_invalid.dart';
 import '../../shared/widgets/app_backdrop.dart';
 import '../../shared/widgets/app_logo.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/glass_card.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -86,13 +87,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       focusFirstInvalid([
         FormFieldRef(
-            focusNode: _userFocus,
-            validator: _requiredUser,
-            controller: _userCtrl),
+          focusNode: _userFocus,
+          validator: _requiredUser,
+          controller: _userCtrl,
+        ),
         FormFieldRef(
-            focusNode: _passFocus,
-            validator: _requiredPass,
-            controller: _passCtrl),
+          focusNode: _passFocus,
+          validator: _requiredPass,
+          controller: _passCtrl,
+        ),
       ]);
       return;
     }
@@ -103,13 +106,17 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await context
-          .read<AuthService>()
-          .login(_userCtrl.text, _passCtrl.text);
+      await context.read<AuthService>().login(_userCtrl.text, _passCtrl.text);
       // On success the root swaps in the shell; nothing to do here.
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e, stack) {
+      // Everything the transport can fail at is already turned into an
+      // ApiException by ApiClient._send, so reaching here means the failure was
+      // on the DEVICE (secure storage, a plugin channel) — the one class of
+      // login failure the screen alone can tell us nothing about. Log it, or a
+      // tester on a physical phone has only "Something went wrong" to report.
+      debugPrint('Login failed (${e.runtimeType}): $e\n$stack');
       if (mounted) setState(() => _error = 'Something went wrong. Try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -133,150 +140,176 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// True while the exit question is on screen, so a second back press does not
+  /// stack a second copy of it behind the first.
+  bool _asking = false;
+
+  /// Back on the login screen is back on the FIRST screen — there is nothing
+  /// behind it, so the press either closes the app or does nothing. It asks,
+  /// the same as Home does.
+  Future<void> _back() async {
+    if (_asking) return;
+    _asking = true;
+    try {
+      await confirmExit(context);
+    } finally {
+      if (mounted) _asking = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: true,
-      body: AppBackdrop(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AppLogo(height: 54),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Customer Portal',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        letterSpacing: 1.4,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-
-                    GlassCard(
-                      strong: true,
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'Sign in',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Track your solar application, documents and generation.',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 22),
-
-                            TextFormField(
-                              controller: _userCtrl,
-                              focusNode: _userFocus,
-                              textInputAction: TextInputAction.next,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              decoration: const InputDecoration(
-                                labelText: 'Username',
-                                hintText: 'Your Enersol username',
-                                prefixIcon: Icon(Icons.person_outline),
-                              ),
-                              validator: _requiredUser,
-                            ),
-                            const SizedBox(height: 14),
-
-                            TextFormField(
-                              controller: _passCtrl,
-                              focusNode: _passFocus,
-                              obscureText: _obscure,
-                              textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) => _submit(),
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscure
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    size: 20,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
-                                ),
-                              ),
-                              validator: _requiredPass,
-                            ),
-
-                            if (_error != null) ...[
-                              const SizedBox(height: 16),
-                              _ErrorBanner(message: _error!),
-                            ],
-
-                            const SizedBox(height: 22),
-                            GradientButton(
-                              label: 'Sign In',
-                              icon: Icons.login_rounded,
-                              loading: _busy,
-                              onPressed: _busy ? null : _submit,
-                            ),
-
-                            if (_bioReady) ...[
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  const Expanded(child: Divider()),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
-                                    child: Text('or',
-                                        style: theme.textTheme.bodySmall),
-                                  ),
-                                  const Expanded(child: Divider()),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              OutlinedButton.icon(
-                                onPressed: _busy ? null : _biometricLogin,
-                                icon: Icon(
-                                  _bioKind == BiometricKind.face
-                                      ? Icons.face_rounded
-                                      : Icons.fingerprint,
-                                  size: 24,
-                                ),
-                                label: Text('Sign in with ${_bioKind.label}'),
-                              ),
-                            ],
-                          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: true,
+        body: AppBackdrop(
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AppLogo(height: 54),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Customer Portal',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          letterSpacing: 1.4,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 26),
 
-                    const SizedBox(height: 24),
-                    if (_version.isNotEmpty)
-                      Text(_version, style: theme.textTheme.labelSmall),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Developed by ${Env.developerName}',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      GlassCard(
+                        strong: true,
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Sign in',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Track your solar application, documents and generation.',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 22),
+
+                              TextFormField(
+                                controller: _userCtrl,
+                                focusNode: _userFocus,
+                                textInputAction: TextInputAction.next,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                decoration: const InputDecoration(
+                                  labelText: 'Username',
+                                  hintText: 'Your Enersol username',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: _requiredUser,
+                              ),
+                              const SizedBox(height: 14),
+
+                              TextFormField(
+                                controller: _passCtrl,
+                                focusNode: _passFocus,
+                                obscureText: _obscure,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _submit(),
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscure
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 20,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _obscure = !_obscure),
+                                  ),
+                                ),
+                                validator: _requiredPass,
+                              ),
+
+                              if (_error != null) ...[
+                                const SizedBox(height: 16),
+                                _ErrorBanner(message: _error!),
+                              ],
+
+                              const SizedBox(height: 22),
+                              GradientButton(
+                                label: 'Sign In',
+                                icon: Icons.login_rounded,
+                                loading: _busy,
+                                onPressed: _busy ? null : _submit,
+                              ),
+
+                              if (_bioReady) ...[
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    const Expanded(child: Divider()),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      child: Text(
+                                        'or',
+                                        style: theme.textTheme.bodySmall,
+                                      ),
+                                    ),
+                                    const Expanded(child: Divider()),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                OutlinedButton.icon(
+                                  onPressed: _busy ? null : _biometricLogin,
+                                  icon: Icon(
+                                    _bioKind == BiometricKind.face
+                                        ? Icons.face_rounded
+                                        : Icons.fingerprint,
+                                    size: 24,
+                                  ),
+                                  label: Text('Sign in with ${_bioKind.label}'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+
+                      const SizedBox(height: 24),
+                      if (_version.isNotEmpty)
+                        Text(_version, style: theme.textTheme.labelSmall),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Developed by ${Env.developerName}',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -309,10 +342,10 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.danger, height: 1.35),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.danger,
+                height: 1.35,
+              ),
             ),
           ),
         ],

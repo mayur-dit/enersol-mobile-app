@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -9,10 +8,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config/env.dart';
 import '../../core/data/customer_repository.dart';
 import '../../core/models/customer_models.dart';
+import '../../core/models/picked_upload.dart';
 import '../../core/state/screen_refresh.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/date_format.dart';
 import '../../core/utils/errors.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/page_scaffold.dart';
 
@@ -57,9 +58,9 @@ class _DocumentRequestsScreenState extends State<DocumentRequestsScreen>
   }
 
   Future<List<DocumentRequest>> _load() {
-    return context
-        .read<CustomerRepository>()
-        .documentRequests(projectId: widget.projectId);
+    return context.read<CustomerRepository>().documentRequests(
+      projectId: widget.projectId,
+    );
   }
 
   @override
@@ -88,9 +89,9 @@ class _DocumentRequestsScreenState extends State<DocumentRequestsScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Documents needed')),
-      body: RefreshIndicator(
+    return PageScaffold(
+      title: 'DOCUMENTS NEEDED',
+      child: RefreshIndicator(
         onRefresh: refreshNow,
         color: AppColors.ember,
         child: FutureBuilder<List<DocumentRequest>>(
@@ -134,33 +135,39 @@ class _DocumentRequestsScreenState extends State<DocumentRequestsScreen>
                 if (todo.isNotEmpty) ...[
                   _Banner(count: todo.length),
                   const SizedBox(height: 14),
-                  ...todo.map((r) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _RequestCard(
-                          request: r,
-                          onTap: () => _openSheet(r),
-                        ),
-                      )),
+                  ...todo.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RequestCard(
+                        request: r,
+                        onTap: () => _openSheet(r),
+                      ),
+                    ),
+                  ),
                 ],
                 if (sent.isNotEmpty) ...[
                   const SectionTitle('Sent, waiting on us'),
-                  ...sent.map((r) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _RequestCard(
-                          request: r,
-                          onTap: () => _openSheet(r),
-                        ),
-                      )),
+                  ...sent.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RequestCard(
+                        request: r,
+                        onTap: () => _openSheet(r),
+                      ),
+                    ),
+                  ),
                 ],
                 if (done.isNotEmpty) ...[
                   const SectionTitle('Done'),
-                  ...done.map((r) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _RequestCard(
-                          request: r,
-                          onTap: () => _openSheet(r),
-                        ),
-                      )),
+                  ...done.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RequestCard(
+                        request: r,
+                        onTap: () => _openSheet(r),
+                      ),
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 8),
                 Text(
@@ -206,8 +213,11 @@ class _Banner extends StatelessWidget {
               gradient: AppColors.brand,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: const Icon(Icons.upload_file_rounded,
-                color: Colors.white, size: 21),
+            child: const Icon(
+              Icons.upload_file_rounded,
+              color: Colors.white,
+              size: 21,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -215,11 +225,10 @@ class _Banner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  count == 1
-                      ? '1 document needed'
-                      : '$count documents needed',
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  count == 1 ? '1 document needed' : '$count documents needed',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -257,8 +266,9 @@ class _RequestCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   r.title,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -285,7 +295,11 @@ class _RequestCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.route_rounded, size: 14, color: AppColors.ember),
+                const Icon(
+                  Icons.route_rounded,
+                  size: 14,
+                  color: AppColors.ember,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -311,8 +325,11 @@ class _RequestCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline_rounded,
-                      size: 15, color: AppColors.danger),
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 15,
+                    color: AppColors.danger,
+                  ),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
@@ -383,10 +400,27 @@ class _UploadSheet extends StatefulWidget {
 }
 
 class _UploadSheetState extends State<_UploadSheet> {
-  final List<File> _picked = [];
+  final List<PickedUpload> _picked = [];
   final TextEditingController _note = TextEditingController();
   bool _sending = false;
   String? _error;
+
+  /// How many files this request will hold once these are sent.
+  ///
+  /// Already-received files COUNT: the server merges rather than replaces, so
+  /// a customer answering "all three pages" who has already sent two owes one.
+  int get _totalAfterSend => widget.request.files.length + _picked.length;
+
+  /// Files still owed against `minFiles`, which nothing enforced before.
+  ///
+  /// The office sets it when one page is not the whole answer — both sides of
+  /// a sanction letter, every page of a bill. Without it the customer sent one
+  /// page, the request went to Submitted, the desk rejected it, and a day went
+  /// on a round trip the screen could have prevented.
+  int get _shortBy {
+    final owed = widget.request.minFiles - _totalAfterSend;
+    return owed < 0 ? 0 : owed;
+  }
 
   @override
   void dispose() {
@@ -394,42 +428,113 @@ class _UploadSheetState extends State<_UploadSheet> {
     super.dispose();
   }
 
-  Future<void> _addFromCamera() async {
-    final shot = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      // Capped on the way in rather than after the transfer: a 12-megapixel
-      // photograph of an A4 page is no more readable than a 2-megapixel one and
-      // costs a customer on mobile data four times as much to send.
-      maxWidth: 2400,
-      imageQuality: 82,
-    );
-    if (shot == null) return;
-    setState(() => _picked.add(File(shot.path)));
+  /// Take the picks, or say why there are none.
+  ///
+  /// A picker can hand back a row the app cannot read — no bytes and no path,
+  /// which is what a failed platform read looks like. Dropping those silently
+  /// left the customer pressing a button that did nothing.
+  void _accept(List<PickedUpload?> picks) {
+    final usable = picks.whereType<PickedUpload>().toList();
+    if (!mounted) return;
+    setState(() {
+      if (usable.isEmpty) {
+        _error = 'That file could not be read. Try another one.';
+      } else {
+        _error = null;
+        _picked.addAll(usable);
+      }
+    });
   }
 
-  Future<void> _addFromGallery() async {
-    final shots = await ImagePicker().pickMultiImage(
-      maxWidth: 2400,
-      imageQuality: 82,
-    );
-    if (shots.isEmpty) return;
-    setState(() => _picked.addAll(shots.map((x) => File(x.path))));
+  Future<void> _pick(Future<List<PickedUpload?>> Function() choose) async {
+    try {
+      final picks = await choose();
+      if (picks.isEmpty) return; // Cancelled — not a failure.
+      _accept(picks);
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyError(e));
+    }
   }
 
-  Future<void> _addFile() async {
-    // file_picker 11 exposes `pickFiles` as a static; the `.platform` accessor
-    // was the v8 API.
-    final result = await FilePicker.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx'],
+  Future<void> _addFromCamera() => _pick(() async {
+        final shot = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          // Capped on the way in rather than after the transfer: a
+          // 12-megapixel photograph of an A4 page is no more readable than a
+          // 2-megapixel one and costs a customer on mobile data four times as
+          // much to send.
+          maxWidth: 2400,
+          imageQuality: 82,
+        );
+        if (shot == null) return const [];
+        return [await PickedUpload.fromXFile(shot)];
+      });
+
+  Future<void> _addFromGallery() => _pick(() async {
+        final shots = await ImagePicker().pickMultiImage(
+          maxWidth: 2400,
+          imageQuality: 82,
+        );
+        return [
+          for (final shot in shots) await PickedUpload.fromXFile(shot),
+        ];
+      });
+
+  Future<void> _addFile() => _pick(() async {
+        // file_picker 11 exposes `pickFiles` as a static; the `.platform`
+        // accessor was the v8 API.
+        //
+        // `withData` ONLY on the web: there it is the only way to get at the
+        // contents, while on a phone it would pull a 100MB scan into memory
+        // that the uploader would otherwise have streamed off disk.
+        final result = await FilePicker.pickFiles(
+          allowMultiple: true,
+          withData: kIsWeb,
+          type: FileType.custom,
+          allowedExtensions: const [
+            'pdf',
+            'jpg',
+            'jpeg',
+            'png',
+            'webp',
+            'doc',
+            'docx',
+          ],
+        );
+        return (result?.files ?? const <PlatformFile>[])
+            .map(PickedUpload.fromPlatformFile)
+            .toList();
+      });
+
+  /// Back out of the sheet, but not out of a send and not out of a stack of
+  /// files the customer has just spent a minute choosing.
+  Future<void> _back() async {
+    final navigator = Navigator.of(context);
+
+    if (_sending) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sending your files — one moment.')),
+      );
+      return;
+    }
+
+    if (_picked.isEmpty) {
+      navigator.pop();
+      return;
+    }
+
+    final discard = await confirmAction(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Discard these files?',
+      message: _picked.length == 1
+          ? 'The file you picked has not been sent yet.'
+          : 'The ${_picked.length} files you picked have not been sent yet.',
+      cancelLabel: 'Keep',
+      confirmLabel: 'Discard',
+      confirmColor: AppColors.danger,
     );
-    final paths = (result?.paths ?? const <String?>[])
-        .whereType<String>()
-        .map(File.new)
-        .toList();
-    if (paths.isEmpty) return;
-    setState(() => _picked.addAll(paths));
+    if (discard) navigator.pop();
   }
 
   Future<void> _send() async {
@@ -440,10 +545,10 @@ class _UploadSheetState extends State<_UploadSheet> {
     });
     try {
       await context.read<CustomerRepository>().submitDocumentRequest(
-            requestId: widget.request.id,
-            files: _picked,
-            note: _note.text,
-          );
+        requestId: widget.request.id,
+        files: _picked,
+        note: _note.text,
+      );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -459,149 +564,187 @@ class _UploadSheetState extends State<_UploadSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final r = widget.request;
-    final canSend = _picked.isNotEmpty && !_sending;
+    final canSend = _picked.isNotEmpty && !_sending && _shortBy == 0;
 
-    return Padding(
-      // Lifts the sheet clear of the keyboard when the note field has focus.
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: GlassCard(
-        strong: true,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.xl),
+    // A SEND IN PROGRESS MUST NOT BE SWIPED AWAY. The transfer keeps going
+    // after the sheet closes, but the list behind it never refreshes and the
+    // customer is left looking at "1 document needed" for something they just
+    // sent — so they send it again. Blocks the barrier tap and the back gesture
+    // for the seconds it takes, and says WHY rather than just ignoring the
+    // press — see [_back].
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Padding(
+        // Lifts the sheet clear of the keyboard when the note field has focus.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
-        padding: EdgeInsets.fromLTRB(
-          18,
-          14,
-          18,
-          MediaQuery.viewPaddingOf(context).bottom + 18,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.dividerColor,
-                    borderRadius: BorderRadius.circular(2),
+        child: GlassCard(
+          strong: true,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            18,
+            14,
+            18,
+            MediaQuery.viewPaddingOf(context).bottom + 18,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                r.title,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              if (r.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 14),
                 Text(
-                  r.description,
-                  style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                  r.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ],
+                if (r.description.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    r.description,
+                    style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                  ),
+                ],
 
-              // What has already been filed against this request, from either
-              // side. Shown so somebody does not send the same page twice —
-              // and so a document the OFFICE keyed in on their behalf is
-              // visible rather than looking like nothing happened.
-              if (r.files.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                const SectionTitle('Already received'),
-                ...r.files.map((f) => _FileRow(file: f)),
-              ],
+                // What has already been filed against this request, from either
+                // side. Shown so somebody does not send the same page twice —
+                // and so a document the OFFICE keyed in on their behalf is
+                // visible rather than looking like nothing happened.
+                if (r.files.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const SectionTitle('Already received'),
+                  ...r.files.map((f) => _FileRow(file: f)),
+                ],
 
-              if (r.needsAction) ...[
-                const SizedBox(height: 14),
-                const SectionTitle('Add files'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickButton(
-                        icon: Icons.photo_camera_rounded,
-                        label: 'Camera',
-                        onTap: _sending ? null : _addFromCamera,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _PickButton(
-                        icon: Icons.photo_library_rounded,
-                        label: 'Gallery',
-                        onTap: _sending ? null : _addFromGallery,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _PickButton(
-                        icon: Icons.description_rounded,
-                        label: 'File',
-                        onTap: _sending ? null : _addFile,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_picked.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  ..._picked.asMap().entries.map(
-                        (e) => _PendingRow(
-                          file: e.value,
-                          onRemove: _sending
-                              ? null
-                              : () => setState(() => _picked.removeAt(e.key)),
+                if (r.needsAction) ...[
+                  const SizedBox(height: 14),
+                  const SectionTitle('Add files'),
+                  if (r.minFiles > 1) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        _shortBy == 0
+                            ? 'This one needs ${r.minFiles} files — that is all of them.'
+                            : 'This one needs ${r.minFiles} files in total. '
+                                  '$_shortBy still to add.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          height: 1.35,
+                          color: _shortBy == 0
+                              ? AppColors.success
+                              : theme.textTheme.bodySmall?.color,
                         ),
                       ),
-                ],
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _note,
-                  enabled: !_sending,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Anything we should know (optional)',
+                    ),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PickButton(
+                          icon: Icons.photo_camera_rounded,
+                          label: 'Camera',
+                          onTap: _sending ? null : _addFromCamera,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PickButton(
+                          icon: Icons.photo_library_rounded,
+                          label: 'Gallery',
+                          onTap: _sending ? null : _addFromGallery,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PickButton(
+                          icon: Icons.description_rounded,
+                          label: 'File',
+                          onTap: _sending ? null : _addFile,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    _error!,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: AppColors.danger),
-                  ),
-                ],
-                const SizedBox(height: 14),
-                GradientButton(
-                  label: _picked.isEmpty
-                      ? 'Add a file to send'
-                      : 'Send ${_picked.length} file${_picked.length == 1 ? '' : 's'}',
-                  icon: Icons.send_rounded,
-                  loading: _sending,
-                  onPressed: canSend ? _send : null,
-                ),
-              ] else ...[
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded,
-                        color: AppColors.success, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        r.awaitingReview
-                            ? 'Sent. We will let you know if anything else is needed.'
-                            : 'Received and accepted — nothing more to do.',
-                        style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                  if (_picked.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ..._picked.asMap().entries.map(
+                      (e) => _PendingRow(
+                        file: e.value,
+                        onRemove: _sending
+                            ? null
+                            : () => setState(() => _picked.removeAt(e.key)),
                       ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _note,
+                    enabled: !_sending,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Anything we should know (optional)',
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _error!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.danger,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  GradientButton(
+                    label: _picked.isEmpty
+                        ? 'Add a file to send'
+                        : (_shortBy > 0
+                              ? 'Add $_shortBy more'
+                              : 'Send ${_picked.length} file${_picked.length == 1 ? '' : 's'}'),
+                    icon: Icons.send_rounded,
+                    loading: _sending,
+                    onPressed: canSend ? _send : null,
+                  ),
+                ] else ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          r.awaitingReview
+                              ? 'Sent. We will let you know if anything else is needed.'
+                              : 'Received and accepted — nothing more to do.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -643,15 +786,13 @@ class _PickButton extends StatelessWidget {
 class _PendingRow extends StatelessWidget {
   const _PendingRow({required this.file, this.onRemove});
 
-  final File file;
+  final PickedUpload file;
   final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = file.uri.pathSegments.isEmpty
-        ? file.path
-        : file.uri.pathSegments.last;
+    final name = file.name;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(

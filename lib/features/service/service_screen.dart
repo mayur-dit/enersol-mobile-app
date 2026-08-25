@@ -7,6 +7,7 @@ import '../../core/state/screen_refresh.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/utils/focus_first_invalid.dart';
 import '../../shared/widgets/app_shell.dart';
+import '../../shared/widgets/confirm_dialog.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/page_scaffold.dart';
 import '../../core/utils/errors.dart';
@@ -76,8 +77,8 @@ class _ServiceScreenState extends State<ServiceScreen> with ScreenRefresh {
               final items = snap.data ?? const <ServiceRequest>[];
               final wantFab =
                   snap.connectionState != ConnectionState.waiting &&
-                      !snap.hasError &&
-                      items.isNotEmpty;
+                  !snap.hasError &&
+                  items.isNotEmpty;
               // Deferred: this runs during build, and the FAB is a sibling in
               // the same Stack.
               if (wantFab != _showFab) {
@@ -196,8 +197,9 @@ class _RequestCardState extends State<_RequestCard> {
                   children: [
                     Text(
                       r.type,
-                      style: theme.textTheme.bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -222,8 +224,11 @@ class _RequestCardState extends State<_RequestCard> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.forum_outlined,
-                    size: 14, color: theme.textTheme.labelSmall?.color),
+                Icon(
+                  Icons.forum_outlined,
+                  size: 14,
+                  color: theme.textTheme.labelSmall?.color,
+                ),
                 const SizedBox(width: 5),
                 Text(
                   '${r.logs.length} update${r.logs.length == 1 ? '' : 's'}',
@@ -256,46 +261,47 @@ class _RequestCardState extends State<_RequestCard> {
                 padding: const EdgeInsets.only(top: 12),
                 child: Column(
                   children: r.logs
-                      .map((l) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.only(top: 5),
-                                  width: 7,
-                                  height: 7,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.ember,
-                                    shape: BoxShape.circle,
-                                  ),
+                      .map(
+                        (l) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 5),
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.ember,
+                                  shape: BoxShape.circle,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${l.by}  ·  '
-                                        '${fmtDateTime(l.at)}',
-                                        style: theme.textTheme.labelSmall
-                                            ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        l.note,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(height: 1.35),
-                                      ),
-                                    ],
-                                  ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${l.by}  ·  '
+                                      '${fmtDateTime(l.at)}',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      l.note,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(height: 1.35),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ))
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ),
@@ -326,6 +332,7 @@ class _RaiseRequestSheetState extends State<_RaiseRequestSheet> {
     if (t.length < 10) return 'Add a little more detail';
     return null;
   }
+
   String _type = kServiceTypes.first;
   bool _busy = false;
 
@@ -340,9 +347,10 @@ class _RaiseRequestSheetState extends State<_RaiseRequestSheet> {
     if (!(_formKey.currentState?.validate() ?? false)) {
       focusFirstInvalid([
         FormFieldRef(
-            focusNode: _descriptionFocus,
-            validator: _validateDescription,
-            controller: _description),
+          focusNode: _descriptionFocus,
+          validator: _validateDescription,
+          controller: _description,
+        ),
       ]);
       return;
     }
@@ -353,13 +361,13 @@ class _RaiseRequestSheetState extends State<_RaiseRequestSheet> {
 
     try {
       final ref = await context.read<CustomerRepository>().raiseServiceRequest(
-            type: _type,
-            description: _description.text.trim(),
-          );
-      navigator.pop(true);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Request $ref created.')),
+        type: _type,
+        description: _description.text.trim(),
       );
+      // Only if the sheet is STILL THERE. Dragged away mid-send it is not, and
+      // this pop would have closed the screen underneath it instead.
+      if (mounted) navigator.pop(true);
+      messenger.showSnackBar(SnackBar(content: Text('Request $ref created.')));
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -367,15 +375,51 @@ class _RaiseRequestSheetState extends State<_RaiseRequestSheet> {
         // than a blanket failure — see friendlyError.
         messenger.showSnackBar(
           SnackBar(
-            content: Text(friendlyError(
-              e,
-              fallback: 'Could not send the request. Check your connection and '
-                  'try again.',
-            )),
+            content: Text(
+              friendlyError(
+                e,
+                fallback:
+                    'Could not send the request. Check your connection and '
+                    'try again.',
+              ),
+            ),
           ),
         );
       }
     }
+  }
+
+  /// Back out of the sheet, but not out of a half-written request.
+  ///
+  /// The sheet is the only place the description exists, so dismissing it
+  /// throws the text away — worth one question. A send already under way is not
+  /// interruptible at all: the request is with the server either way, and
+  /// closing early leaves the list behind showing nothing was raised.
+  Future<void> _back() async {
+    final navigator = Navigator.of(context);
+
+    if (_busy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sending your request — one moment.')),
+      );
+      return;
+    }
+
+    if (_description.text.trim().isEmpty) {
+      navigator.pop();
+      return;
+    }
+
+    final discard = await confirmAction(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: 'Discard this request?',
+      message: 'What you have typed will not be saved.',
+      cancelLabel: 'Keep editing',
+      confirmLabel: 'Discard',
+      confirmColor: AppColors.danger,
+    );
+    if (discard) navigator.pop();
   }
 
   @override
@@ -383,110 +427,121 @@ class _RaiseRequestSheetState extends State<_RaiseRequestSheet> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkChrome : Colors.white,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
+    // Back decides for itself what to do — see [_back]. `canPop: false` also
+    // takes the barrier tap through the same question.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: SafeArea(
-          top: false,
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(2),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkChrome : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: SafeArea(
+            top: false,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.18,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Raise a service request',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                // Said up front rather than discovered by being refused. A
-                // customer whose job is not commissioned yet can still ask us
-                // something, and until now pressing Send told them only that
-                // the server had failed.
-                if (context.read<CustomerRepository>().hasCommissionedProject ==
-                    false) ...[
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: 18),
                   Text(
-                    'Your installation is not commissioned yet, so this will be '
-                    'logged against your application and answered by our team.',
-                    style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                    'Raise a service request',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  // Said up front rather than discovered by being refused. A
+                  // customer whose job is not commissioned yet can still ask us
+                  // something, and until now pressing Send told them only that
+                  // the server had failed.
+                  if (context
+                          .read<CustomerRepository>()
+                          .hasCommissionedProject ==
+                      false) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Your installation is not commissioned yet, so this will be '
+                      'logged against your application and answered by our team.',
+                      style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+
+                  // Chips rather than a dropdown: six fixed types are all
+                  // visible and one tap apart, so opening an overlay to pick
+                  // one only added a step. A dropdown is the right control for
+                  // a list that grows (the electricity-board picker on Apply is
+                  // exactly that); this one never does.
+                  Text('Type of issue', style: theme.textTheme.labelSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: kServiceTypes.map((t) {
+                      final selected = _type == t;
+                      return ChoiceChip(
+                        label: Text(t),
+                        selected: selected,
+                        onSelected: (_) => setState(() => _type = t),
+                        showCheckmark: false,
+                        selectedColor: AppColors.ember.withValues(alpha: 0.16),
+                        side: BorderSide(
+                          color: selected
+                              ? AppColors.ember
+                              : theme.dividerColor,
+                        ),
+                        labelStyle: theme.textTheme.bodySmall?.copyWith(
+                          color: selected ? AppColors.ember : null,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 18),
+
+                  TextFormField(
+                    controller: _description,
+                    focusNode: _descriptionFocus,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Describe the problem',
+                      alignLabelWithHint: true,
+                    ),
+                    validator: _validateDescription,
+                  ),
+                  const SizedBox(height: 20),
+
+                  GradientButton(
+                    label: 'Submit request',
+                    icon: Icons.send_rounded,
+                    loading: _busy,
+                    onPressed: _busy ? null : _submit,
                   ),
                 ],
-                const SizedBox(height: 18),
-
-                // Chips rather than a dropdown: six fixed types are all
-                // visible and one tap apart, so opening an overlay to pick
-                // one only added a step. A dropdown is the right control for
-                // a list that grows (the electricity-board picker on Apply is
-                // exactly that); this one never does.
-                Text('Type of issue', style: theme.textTheme.labelSmall),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: kServiceTypes.map((t) {
-                    final selected = _type == t;
-                    return ChoiceChip(
-                      label: Text(t),
-                      selected: selected,
-                      onSelected: (_) => setState(() => _type = t),
-                      showCheckmark: false,
-                      selectedColor: AppColors.ember.withValues(alpha: 0.16),
-                      side: BorderSide(
-                        color: selected
-                            ? AppColors.ember
-                            : theme.dividerColor,
-                      ),
-                      labelStyle: theme.textTheme.bodySmall?.copyWith(
-                        color: selected ? AppColors.ember : null,
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w500,
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 18),
-
-                TextFormField(
-                  controller: _description,
-                  focusNode: _descriptionFocus,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Describe the problem',
-                    alignLabelWithHint: true,
-                  ),
-                  validator: _validateDescription,
-                ),
-                const SizedBox(height: 20),
-
-                GradientButton(
-                  label: 'Submit request',
-                  icon: Icons.send_rounded,
-                  loading: _busy,
-                  onPressed: _busy ? null : _submit,
-                ),
-              ],
+              ),
             ),
           ),
         ),

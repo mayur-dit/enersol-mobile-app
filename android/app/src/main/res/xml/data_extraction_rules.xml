@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Android 12+ replacement for allowBackup/fullBackupContent. Both halves are
+  excluded for the same reason the manifest gives: what flutter_secure_storage
+  writes is only readable with a Keystore key that no transfer carries, so
+  moving the ciphertext to another device produces an unopenable session rather
+  than a restored one.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

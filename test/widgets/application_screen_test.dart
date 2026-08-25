@@ -127,11 +127,13 @@ void main() {
     // submit button; on the 800×600 default the button sits below the fold and
     // every attempt to scroll to it races the layout shifts that entering text
     // causes. Giving the test a window the form fits in tests the form, not
-    // Flutter's scrolling.
+    // Flutter's scrolling. Keep this ahead of the form's real height — the
+    // fields live in a ListView, so anything past the fold is never built and
+    // an assertion about its error text quietly finds nothing.
     setUp(() {
       final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views
           .first;
-      view.physicalSize = const Size(1080, 3600);
+      view.physicalSize = const Size(1080, 4800);
       view.devicePixelRatio = 3;
     });
 
@@ -143,7 +145,14 @@ void main() {
     });
 
     Future<void> submit(WidgetTester tester) async {
-      await tester.tap(find.text('Submit application'));
+      // Scrolled into view rather than tapped where it is expected to be: a tap
+      // that lands off screen only WARNS, so a form that grew by one field
+      // turned every test in this group into "no validation message appeared"
+      // instead of "the button was not there".
+      final button = find.text('Submit application');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
       await tester.pumpAndSettle();
     }
 

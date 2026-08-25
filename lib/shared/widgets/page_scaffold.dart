@@ -1,35 +1,92 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/state/notification_service.dart';
+import '../../core/state/shell_controller.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/notifications/notifications_screen.dart';
 import 'app_backdrop.dart';
+import 'app_drawer.dart';
 import 'app_header.dart';
 
-/// Frame for a screen pushed on top of the shell (Profile, Settings, Referral).
+/// Frame for a screen pushed on top of the shell (Profile, Settings, Alerts,
+/// Refer & Earn, Documents needed, Project progress).
 ///
-/// Carries the same header as the tabs — back on the left, logo centred — but
-/// no menu button, since a pushed route has no drawer of its own.
-class PageScaffold extends StatelessWidget {
+/// THE HEADER IS THE SAME ONE THE TABS GET — back, logo, screen name, bell and
+/// menu. It used to carry only the back arrow and the logo, on the reasoning
+/// that a pushed route owns no drawer; the effect was that half the app had two
+/// buttons in its header and half had none, and the sidebar became unreachable
+/// the moment you opened Settings. A pushed screen gets its OWN [AppDrawer]
+/// here — same contents, same order — and reaches the tabs underneath through
+/// [ShellController].
+class PageScaffold extends StatefulWidget {
   const PageScaffold({
     super.key,
     required this.title,
     required this.child,
     this.floatingActionButton,
+    this.showAlerts = true,
   });
 
   final String title;
   final Widget child;
   final Widget? floatingActionButton;
 
+  /// False on the alerts list itself, the one screen where the bell would point
+  /// at where you already are. The menu stays either way.
+  final bool showAlerts;
+
+  @override
+  State<PageScaffold> createState() => _PageScaffoldState();
+}
+
+class _PageScaffoldState extends State<PageScaffold> {
+  final _drawerKey = GlobalKey<ScaffoldState>();
+
+  /// Tabs live under this route, so getting to one means unwinding back to the
+  /// shell first and then telling it which to show.
+  void _openTab(int index) {
+    final shell = context.read<ShellController>();
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    shell.openTab(index);
+  }
+
+  /// Alerts REPLACES whatever is pushed rather than stacking on it, so the back
+  /// arrow always means "back to the shell" and Settings -> bell -> back does
+  /// not strand the customer on Settings again.
+  void _openAlerts() {
+    final navigator = Navigator.of(context);
+    final onOpenTab = _openTab;
+    navigator.popUntil((r) => r.isFirst);
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => NotificationsScreen(onOpenTab: onOpenTab),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final unread = context.watch<NotificationService>().unread;
+
     return Scaffold(
+      key: _drawerKey,
       backgroundColor: Colors.transparent,
-      floatingActionButton: floatingActionButton,
+      floatingActionButton: widget.floatingActionButton,
+      // No tab is current on a pushed screen, so nothing in the list is
+      // highlighted — -1 matches no [ShellTab].
+      drawer: AppDrawer(currentTab: -1, onSelectTab: _openTab),
       body: AppBackdrop(
         child: Column(
           children: [
-            AppHeader(title: title, showBack: true),
-            Expanded(child: child),
+            AppHeader(
+              title: widget.title,
+              showBack: true,
+              unread: unread,
+              onAlertsTap: widget.showAlerts ? _openAlerts : null,
+              onMenuTap: () => _drawerKey.currentState?.openDrawer(),
+            ),
+            Expanded(child: widget.child),
           ],
         ),
       ),
@@ -60,7 +117,8 @@ EdgeInsets tabInsets(BuildContext context, {double extra = 24}) =>
 /// The pushed routes each carried a hard-coded `30` before this, which is
 /// neither the tabs' padding nor an allowance for the home indicator, so the
 /// last row on Settings sat under the gesture bar on a modern iPhone.
-EdgeInsets pageInsets(BuildContext context, {double extra = 24}) => EdgeInsets.fromLTRB(
+EdgeInsets pageInsets(BuildContext context, {double extra = 24}) =>
+    EdgeInsets.fromLTRB(
       AppSpacing.page,
       AppSpacing.md,
       AppSpacing.page,
@@ -84,9 +142,9 @@ class SectionTitle extends StatelessWidget {
             child: Text(
               text.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.9,
-                  ),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.9,
+              ),
             ),
           ),
           ?trailing,
@@ -149,14 +207,18 @@ class ErrorRetry extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.danger.withValues(alpha: 0.10),
               ),
-              child: const Icon(Icons.cloud_off_rounded,
-                  size: 33, color: AppColors.danger),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                size: 33,
+                color: AppColors.danger,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               "Couldn't load",
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -213,8 +275,9 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 6),

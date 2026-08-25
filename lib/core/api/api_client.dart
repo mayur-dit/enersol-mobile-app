@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 
 import '../config/env.dart';
+import '../models/picked_upload.dart';
 import 'activity_tracer.dart';
 
 /// Raised for any non-2xx reply, carrying the server's message when it sent one.
@@ -168,12 +169,13 @@ class ApiClient {
   /// the business record are deliberately two steps, so a half-finished upload
   /// never leaves a document request pointing at nothing.
   Future<Map<String, dynamic>> uploadFile(
-    File file, {
+    PickedUpload file, {
     String folder = 'customer-uploads',
     String? fileName,
   }) async {
     final uri =
         Uri.parse('${Env.apiHost}/api/custom-api/${Env.userPath}/upload');
+    final name = fileName ?? file.name;
     final request = http.MultipartRequest('POST', uri)
       // NOT `_headers`: setting Content-Type here would clobber the multipart
       // boundary the client generates, and the server would read an empty body.
@@ -183,18 +185,57 @@ class ApiClient {
         if (_userToken != null && _userToken!.isNotEmpty)
           'x-am-user-authorization': _userToken!,
       })
-      ..fields['folder'] = folder
-      ..files.add(await http.MultipartFile.fromPath(
-        'files',
-        file.path,
-        filename: fileName,
-      ));
+      ..fields['folder'] = folder;
 
-    // A generous ceiling, separate from [_timeout]: a 30-second cap is right for
-    // a JSON round trip and wrong for a photograph on a rural connection, which
-    // is exactly where this screen gets used.
-    final streamed = await request.send().timeout(const Duration(minutes: 10));
-    final res = await http.Response.fromStream(streamed);
+    // EVERY failure out of here is an ApiException, as it is in [_send]. This
+    // was the one network call in the app that let a raw exception escape, so a
+    // dropped connection mid-upload — or reading a file the picker has since
+    // let go of — reached the sheet as an untranslatable object and printed the
+    // "Something went wrong" fallback over a cause nobody could see. Attaching
+    // the file is inside the guard too: on a phone that step opens the file, so
+    // it fails for its own reasons, and it fails before anything is sent.
+    //
+    // The timeout is a generous ceiling, separate from [_timeout]: a 30-second
+    // cap is right for a JSON round trip and wrong for a photograph on a rural
+    // connection, which is exactly where this screen gets used.
+    try {
+      // A path is streamed from disk; bytes are sent as they are. The web build
+      // only ever has the second — see [PickedUpload]. Opening the file is its
+      // own step because it fails for its own reasons: the picker's copy can be
+      // swept out of the cache between choosing it and sending it, and that is
+      // not a connection problem.
+      // The part is TYPED. See [PickedUpload.mimeType]: without it the server
+      // sees application/octet-stream and stores a photograph as a document.
+      // A type is a nicety though — a malformed one from a platform picker must
+      // not be the reason a document fails to send.
+      MediaType? type;
+      try {
+        type = file.mimeType == null ? null : MediaType.parse(file.mimeType!);
+      } catch (_) {
+        type = null;
+      }
+      request.files.add(file.path != null
+          ? await http.MultipartFile.fromPath('files', file.path!,
+              filename: name, contentType: type)
+          : http.MultipartFile.fromBytes('files', file.bytes!,
+              filename: name, contentType: type));
+    } catch (_) {
+      throw ApiException('That file could not be read. Pick it again.');
+    }
+
+    final http.Response res;
+    try {
+      // `_http.send`, NOT `request.send()`: the latter spins up a throwaway
+      // client of its own, so the upload was the one call in the app that
+      // ignored the client it was given — and the only one no test could reach.
+      final streamed =
+          await _http.send(request).timeout(const Duration(minutes: 10));
+      res = await http.Response.fromStream(streamed);
+    } on TimeoutException {
+      throw ApiException('The upload took too long. Try again.');
+    } catch (_) {
+      throw ApiException('Could not send that file. Check your connection.');
+    }
 
     Map<String, dynamic> body;
     try {

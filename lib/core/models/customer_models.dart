@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/date_format.dart';
 
 /// One step of the customer-facing application timeline.
 ///
@@ -242,14 +243,36 @@ class ReferralSummary {
     required this.code,
     required this.totalPoints,
     required this.referrals,
+    this.pointsOnInstall = 0,
   });
 
   final String code;
   final int totalPoints;
   final List<Referral> referrals;
 
+  /// What one referral is worth once it is installed, as the SERVER defines it.
+  ///
+  /// The figure lives in `Constants.referralPointsOnInstall` and is shipped with
+  /// the rows, so the screen can say what a referral still in flight will pay
+  /// without keeping its own copy that drifts the day the office changes it.
+  /// Zero means the server named no figure, and the screen promises nothing.
+  final int pointsOnInstall;
+
   int get convertedCount =>
       referrals.where((r) => r.status.toLowerCase() == 'installed').length;
+
+  /// Referrals still on their way to a reward.
+  ///
+  /// A lost job is not waiting on anything, so it is excluded alongside the
+  /// installed ones — otherwise "3 pending" counts a referral that will never
+  /// pay and the customer waits for points that are not coming.
+  int get pendingCount => referrals.where((r) {
+        final s = r.status.toLowerCase();
+        return s != 'installed' && s != 'lost';
+      }).length;
+
+  /// Points the referrals in flight would pay if every one of them installed.
+  int get pendingPoints => pendingCount * pointsOnInstall;
 }
 
 /// A single day's generation reading.
@@ -392,11 +415,12 @@ class DocumentRequest {
 
   static DocumentRequest fromJson(Map<String, dynamic> json) {
     String s(String k) => '${json[k] ?? ''}'.trim();
-    DateTime? d(String k) {
-      final raw = json[k];
-      if (raw == null || '$raw'.isEmpty) return null;
-      return DateTime.tryParse('$raw')?.toLocal();
-    }
+    // parseDate, not a local DateTime.tryParse: API Maker sends a date as an
+    // ISO string, as a `{ $date: … }` wrapper or as epoch milliseconds
+    // depending on the field, and tryParse answers null to the last two. A
+    // due date that silently disappeared would take `isOverdue` with it — the
+    // request would sit there looking optional.
+    DateTime? d(String k) => parseDate(json[k]);
 
     return DocumentRequest(
       id: s('id'),
@@ -425,7 +449,7 @@ class DocumentRequest {
           thumbUrl: '${f['thumbUrl'] ?? ''}',
           size: int.tryParse('${f['size'] ?? 0}') ?? 0,
           source: '${f['source'] ?? 'staff'}',
-          uploadedAt: DateTime.tryParse('${f['uploadedAt'] ?? ''}')?.toLocal(),
+          uploadedAt: parseDate(f['uploadedAt']),
         );
       }).toList(),
       requestedAt: d('requestedAt'),

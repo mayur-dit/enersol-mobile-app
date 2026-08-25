@@ -15,6 +15,12 @@ dependencies:
 
   # Network
   http: ^1.2.2
+  # Only for `MediaType`, to label a multipart part. `package:http` sends
+  # application/octet-stream when nothing says otherwise, and `Enersol Upload`
+  # reads that field to decide whether a file is an image worth resizing and
+  # what Content-Type to serve it back as — so an unlabelled photo came back a
+  # download rather than a picture.
+  http_parser: ^4.1.2
   # The live half of notifications: a plain WebSocket carrying API Maker's
   # REGISTER/NOTIFICATION protocol, the same one the two web shells speak.
   web_socket_channel: ^3.0.3

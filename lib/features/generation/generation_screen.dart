@@ -15,6 +15,20 @@ import '../../shared/widgets/page_scaffold.dart';
 import '../../core/utils/errors.dart';
 import '../../core/utils/date_format.dart';
 
+/// A system size as a customer would say it: "3 kW", not "3.0 kW".
+///
+/// `capacityKw` is a double all the way from Mongo, so interpolating it
+/// straight put a pointless `.0` on every whole-number system — which is most
+/// of them — right in the hero badge. One decimal is kept when there actually
+/// is one, because 3.5 kW is a real size and rounding it to 4 would be a lie.
+String fmtKw(num kw) {
+  final rounded = (kw * 10).round() / 10;
+  final text = rounded == rounded.roundToDouble()
+      ? rounded.toStringAsFixed(0)
+      : rounded.toStringAsFixed(1);
+  return '$text kW';
+}
+
 /// Live output, the week's history, and what it all adds up to.
 class GenerationScreen extends StatefulWidget {
   const GenerationScreen({super.key});
@@ -243,7 +257,7 @@ class _LiveHero extends StatelessWidget {
             ),
             child: Text(
               '${(summary.utilisation * 100).round()}% of '
-              '${summary.capacityKw} kW capacity',
+              '${fmtKw(summary.capacityKw)} capacity',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -525,8 +539,16 @@ class _AreaChart extends StatelessWidget {
     final minY = points.map((p) => p.kwh).reduce(math.min);
 
     // Headroom above and below so the curve never touches the frame.
-    final top = (maxY * 1.18).ceilToDouble();
+    //
+    // A FLAT WEEK HAS NO RANGE TO PAD. A system commissioned yesterday, or an
+    // engineer who keyed in a row of zeros, gives maxY == minY == 0: the top
+    // and bottom collapse onto each other, the grid interval below comes out as
+    // 0, and fl_chart asserts on a non-positive interval — so the tab threw
+    // where it should have drawn a flat line along the floor. A minimum span of
+    // 1 kWh gives the chart something to divide.
+    final rawTop = (maxY * 1.18).ceilToDouble();
     final bottom = math.max(0, (minY * 0.55)).toDouble();
+    final top = rawTop - bottom < 1 ? bottom + 1 : rawTop;
 
     return LineChart(
       LineChartData(
@@ -536,7 +558,7 @@ class _AreaChart extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: ((top - bottom) / 3).ceilToDouble(),
+          horizontalInterval: math.max(1, ((top - bottom) / 3).ceilToDouble()),
           getDrawingHorizontalLine: (_) => FlLine(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
             strokeWidth: 1,

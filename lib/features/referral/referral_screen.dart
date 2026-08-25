@@ -86,23 +86,32 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 const SectionTitle('How it works'),
                 GlassCard(
                   child: Column(
-                    children: const [
-                      _Step(
+                    children: [
+                      const _Step(
                         number: '1',
                         title: 'Share your code',
                         body: 'Send it to friends, family or neighbours.',
                       ),
-                      _Step(
+                      const _Step(
                         number: '2',
                         title: 'They enquire',
-                        body: 'They mention your code when applying for solar.',
+                        body: 'They enter your code on the application form.',
                       ),
+                      // The reward is paid ONCE, on installation — nothing is
+                      // staged along the way. The old copy promised points "as
+                      // their project progresses", which is a promise the
+                      // settlement sweep does not keep, and the first customer
+                      // to watch a referral reach Site Survey with 0 points
+                      // against it would have been right to complain.
                       _Step(
                         number: '3',
                         title: 'You earn points',
-                        body:
-                            'Points are credited as their project progresses, '
-                            'with the full reward on installation.',
+                        body: data.pointsOnInstall > 0
+                            ? '${NumberFormat.decimalPattern('en_IN').format(data.pointsOnInstall)} '
+                                'points are credited once their system is '
+                                'installed. Nothing before then.'
+                            : 'Points are credited once their system is '
+                                'installed.',
                         isLast: true,
                       ),
                     ],
@@ -122,7 +131,10 @@ class _ReferralScreenState extends State<ReferralScreen> {
                   ...data.referrals.map(
                     (r) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _ReferralTile(referral: r),
+                      child: _ReferralTile(
+                        referral: r,
+                        pointsOnInstall: data.pointsOnInstall,
+                      ),
                     ),
                   ),
               ],
@@ -187,6 +199,23 @@ class _PointsCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.92),
                   ),
                 ),
+                // The number above is what has been CREDITED, and on a healthy
+                // account that stays 0 for months while three referrals work
+                // their way through survey and installation. Naming what is
+                // still in flight is the difference between a screen that looks
+                // broken and one that looks like it is working.
+                if (summary.pendingCount > 0 && summary.pointsOnInstall > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '${NumberFormat.decimalPattern('en_IN').format(summary.pendingPoints)} '
+                      'more when ${summary.pendingCount == 1 ? 'it installs' : 'they install'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -331,9 +360,12 @@ class _Step extends StatelessWidget {
 }
 
 class _ReferralTile extends StatelessWidget {
-  const _ReferralTile({required this.referral});
+  const _ReferralTile({required this.referral, required this.pointsOnInstall});
 
   final Referral referral;
+
+  /// What this row will pay if it gets there, for the rows that have not.
+  final int pointsOnInstall;
 
   @override
   Widget build(BuildContext context) {
@@ -382,13 +414,24 @@ class _ReferralTile extends StatelessWidget {
                 compact: true,
               ),
               const SizedBox(height: 5),
-              Text(
-                '+${referral.pointsEarned} pts',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.success,
+              // "+0 pts" against a live referral reads as a refusal. Earned
+              // points are stated in green; a referral still on its way is
+              // quoted at what it WILL pay, in the muted style that says this
+              // has not happened yet; a lost one is quoted nothing at all.
+              if (referral.pointsEarned > 0)
+                Text(
+                  '+${referral.pointsEarned} pts',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.success,
+                  ),
+                )
+              else if (referral.status.toLowerCase() != 'lost' &&
+                  pointsOnInstall > 0)
+                Text(
+                  '$pointsOnInstall pts on install',
+                  style: theme.textTheme.labelSmall,
                 ),
-              ),
             ],
           ),
         ],

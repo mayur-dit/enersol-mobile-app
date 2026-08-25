@@ -47,6 +47,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return PageScaffold(
       title: 'ALERTS',
+      // The only screen that drops the bell — it would point at itself. The
+      // menu stays, so the header still matches every other screen.
+      showAlerts: false,
       child: RefreshIndicator(
         onRefresh: service.refresh,
         child: Builder(

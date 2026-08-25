@@ -7,6 +7,7 @@ import 'core/data/customer_repository.dart';
 import 'core/state/auth_service.dart';
 import 'core/state/notification_service.dart';
 import 'core/state/settings_service.dart';
+import 'core/state/shell_controller.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'shared/widgets/app_backdrop.dart';
@@ -19,6 +20,17 @@ void main() {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  // The very first frame, before any [AppBackdrop] has had a chance to annotate
+  // itself — otherwise the status bar spends that frame in whatever the Android
+  // launch theme left behind.
+  SystemChrome.setSystemUIOverlayStyle(
+    AppTheme.overlayStyle(
+      WidgetsBinding.instance.platformDispatcher.platformBrightness,
+    ),
+  );
+  // The bars are drawn THROUGH: the backdrop gradient runs under the status bar
+  // and the gesture area, so neither gets an opaque strip of its own.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   runApp(const EnersolApp());
 }
@@ -41,6 +53,7 @@ class _EnersolAppState extends State<EnersolApp> {
   late final SettingsService _settings;
   late final CustomerRepository _repo;
   late final NotificationService _notifications;
+  final ShellController _shell = ShellController();
 
   @override
   void initState() {
@@ -78,6 +91,8 @@ class _EnersolAppState extends State<EnersolApp> {
         ChangeNotifierProvider<AuthService>.value(value: _auth),
         ChangeNotifierProvider<SettingsService>.value(value: _settings),
         ChangeNotifierProvider<NotificationService>.value(value: _notifications),
+        // Above the Navigator on purpose — see [ShellController].
+        Provider<ShellController>.value(value: _shell),
       ],
       child: Consumer<SettingsService>(
         builder: (context, settings, _) {

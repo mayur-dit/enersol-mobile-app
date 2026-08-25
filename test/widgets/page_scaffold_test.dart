@@ -1,3 +1,4 @@
+import 'package:enersol_customer/shared/widgets/app_drawer.dart';
 import 'package:enersol_customer/shared/widgets/page_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,13 +9,13 @@ import '../helpers.dart';
 void main() {
   setUpAll(useOfflineFonts);
 
-  Future<void> pump(WidgetTester tester, Widget child) => tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: child)),
-      );
+  Future<void> pump(WidgetTester tester, Widget child) =>
+      tester.pumpWidget(MaterialApp(home: Scaffold(body: child)));
 
   group('EmptyState', () {
-    testWidgets('is scrollable, so pull-to-refresh works over it',
-        (tester) async {
+    testWidgets('is scrollable, so pull-to-refresh works over it', (
+      tester,
+    ) async {
       await pump(
         tester,
         const EmptyState(icon: Icons.inbox, title: 'Nothing here'),
@@ -79,22 +80,81 @@ void main() {
   });
 
   group('insets', () {
-    testWidgets('a tab clears the footer nav, a pushed page does not',
-        (tester) async {
+    testWidgets('a tab clears the footer nav, a pushed page does not', (
+      tester,
+    ) async {
       late EdgeInsets tab;
       late EdgeInsets page;
       await pump(
         tester,
-        Builder(builder: (context) {
-          tab = tabInsets(context);
-          page = pageInsets(context);
-          return const SizedBox.shrink();
-        }),
+        Builder(
+          builder: (context) {
+            tab = tabInsets(context);
+            page = pageInsets(context);
+            return const SizedBox.shrink();
+          },
+        ),
       );
 
       expect(tab.left, page.left, reason: 'one page gutter for both');
-      expect(tab.bottom, greaterThan(page.bottom),
-          reason: 'only the tab has a 62px nav bar painted over it');
+      expect(
+        tab.bottom,
+        greaterThan(page.bottom),
+        reason: 'only the tab has a 62px nav bar painted over it',
+      );
+    });
+  });
+
+  // ── The frame every pushed screen wears ─────────────────────────────────
+  //
+  // Settings, Profile, Refer & Earn, Alerts, Documents needed and Project
+  // progress all sit on this. They used to get a stripped header — back arrow
+  // and logo, no bell, no menu — so half the app had a sidebar and half did
+  // not, and two of them (Documents needed, Project progress) had a bare
+  // Material AppBar with no logo at all. One header, everywhere.
+  group('PageScaffold header', () {
+    testWidgets('carries the same bell and menu the tabs do', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          const PageScaffold(title: 'SETTINGS', child: SizedBox.shrink()),
+        ),
+      );
+
+      expect(find.text('SETTINGS'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.menu), findsOneWidget);
+    });
+
+    testWidgets('drops ONLY the bell where it would point at itself', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        harness(
+          const PageScaffold(
+            title: 'ALERTS',
+            showAlerts: false,
+            child: SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.notifications_none_rounded), findsNothing);
+      expect(
+        find.byIcon(Icons.menu),
+        findsOneWidget,
+        reason: 'the menu is on every screen without exception',
+      );
+    });
+
+    testWidgets('the menu opens a sidebar of its own', (tester) async {
+      await tester.pumpWidget(
+        harness(const PageScaffold(title: 'PROFILE', child: SizedBox.shrink())),
+      );
+
+      expect(find.byType(AppDrawer), findsNothing);
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsOneWidget);
     });
   });
 

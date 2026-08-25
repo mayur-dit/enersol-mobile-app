@@ -551,6 +551,7 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
   final _pincode = TextEditingController();
   final _capacity = TextEditingController();
   final _notes = TextEditingController();
+  final _referral = TextEditingController();
 
   // One per validated field, so a rejected submit can put the keyboard in the
   // first box that is actually holding it up rather than leaving the customer
@@ -619,6 +620,7 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
       _pincode,
       _capacity,
       _notes,
+      _referral,
     ]) {
       c.dispose();
     }
@@ -672,6 +674,7 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
                 projectType: _projectType,
                 discom: _discom!,
                 notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+                referralCode: _referral.text,
               );
 
       if (!mounted) return;
@@ -699,6 +702,7 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
       _formKey.currentState?.reset();
       _capacity.clear();
       _notes.clear();
+      _referral.clear();
       setState(() => _discom = null);
       widget.onSubmitted();
     } on ApiException catch (e) {
@@ -897,15 +901,33 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
               ),
               const SizedBox(height: 18),
 
-              // ── Notes ─────────────────────────────────────────────────
+              // ── Notes & referral ──────────────────────────────────────
               const SectionTitle('Anything else?'),
               GlassCard(
-                child: _Field(
-                  controller: _notes,
-                  label: 'Notes (optional)',
-                  icon: Icons.notes_outlined,
-                  maxLines: 3,
-                  last: true,
+                child: Column(
+                  children: [
+                    _Field(
+                      controller: _notes,
+                      label: 'Notes (optional)',
+                      icon: Icons.notes_outlined,
+                      maxLines: 3,
+                    ),
+                    // The ONLY place a referral is captured from the customer's
+                    // side. Nobody in the office types these in afterwards, so a
+                    // code that is not quoted on this form is a reward the
+                    // referrer never gets — hence a plain, always-visible box
+                    // rather than something folded away behind a disclosure.
+                    _Field(
+                      controller: _referral,
+                      label: 'Referral code (optional)',
+                      icon: Icons.card_giftcard_outlined,
+                      textCapitalization: TextCapitalization.characters,
+                      helperText:
+                          'Referred by an Enersol customer? Enter their code '
+                          'so they get their points.',
+                      last: true,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 22),
@@ -977,6 +999,7 @@ class _Field extends StatelessWidget {
     this.maxLength,
     this.inputFormatters,
     this.helperText,
+    this.textCapitalization = TextCapitalization.none,
     this.last = false,
   });
 
@@ -990,6 +1013,7 @@ class _Field extends StatelessWidget {
   final int? maxLength;
   final List<TextInputFormatter>? inputFormatters;
   final String? helperText;
+  final TextCapitalization textCapitalization;
 
   /// The last field in its card — drops the bottom gap that every OTHER field
   /// needs to clear the one below it. Without this every card carried an
@@ -1009,6 +1033,7 @@ class _Field extends StatelessWidget {
         maxLines: maxLines,
         maxLength: maxLength,
         inputFormatters: inputFormatters,
+        textCapitalization: textCapitalization,
         decoration: InputDecoration(
           labelText: label,
           helperText: helperText,

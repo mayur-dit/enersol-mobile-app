@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 
 import '../api/api_client.dart';
 import '../config/env.dart';
 import '../models/customer_models.dart';
+import '../models/picked_upload.dart';
 import '../state/auth_service.dart';
 import '../utils/date_format.dart';
 
@@ -204,7 +203,16 @@ class CustomerRepository {
     required String projectType,
     required String discom,
     String? notes,
+    String? referralCode,
   }) async {
+    // Upper-cased and trimmed HERE, not on the form: the code is quoted from a
+    // WhatsApp forward or read off a friend's screen, so it arrives with stray
+    // spaces and in whatever case the keyboard was in, and the server matches
+    // `erf_code_str` exactly. An empty box must send no key at all — the portal
+    // treats a present-but-blank code as a code it could not find and logs a
+    // warning about a referral nobody claimed.
+    final code = (referralCode ?? '').trim().toUpperCase();
+
     final data = await _api.portal('submitApplication', params: {
       'name': name,
       'mobile': mobile,
@@ -217,6 +225,7 @@ class CustomerRepository {
       'projectType': projectType,
       'discom': discom,
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      if (code.isNotEmpty) 'referralCode': code,
     });
 
     _projectCache = null;
@@ -334,6 +343,8 @@ class CustomerRepository {
     try {
       data = await _api.portal('referrals');
     } catch (_) {
+      // pointsOnInstall stays 0: a screen that could not reach the server must
+      // not quote a reward it cannot stand behind.
       return ReferralSummary(
         code: fallbackCode.isNotEmpty ? fallbackCode : '—',
         totalPoints: 0,
@@ -362,6 +373,10 @@ class CustomerRepository {
       code: code.isEmpty ? '—' : code,
       totalPoints: total,
       referrals: list,
+      // The office's figure, shipped with the rows. An older backend that does
+      // not send it leaves this 0, and the screen simply says nothing about
+      // what a pending referral is worth.
+      pointsOnInstall: (_num(data['pointsOnInstall']) ?? 0).round(),
     );
   }
 
@@ -471,7 +486,7 @@ class CustomerRepository {
   /// argument this screen exists to prevent.
   Future<void> submitDocumentRequest({
     required String requestId,
-    required List<File> files,
+    required List<PickedUpload> files,
     String note = '',
   }) async {
     final uploaded = <Map<String, dynamic>>[];
@@ -483,7 +498,7 @@ class CustomerRepository {
       }
       uploaded.add({
         'fileId': '${res['fileId'] ?? ''}',
-        'name': '${res['originalName'] ?? file.uri.pathSegments.last}',
+        'name': '${res['originalName'] ?? file.name}',
         'url': url,
         'thumbUrl': '${res['thumbnailPath'] ?? ''}',
         'size': res['fileSize'] ?? 0,
