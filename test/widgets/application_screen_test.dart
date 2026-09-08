@@ -31,7 +31,7 @@ void main() {
     await pumpWith(tester, [applicationRow()]);
 
     expect(find.text('No applications yet'), findsNothing);
-    expect(find.text('RE1007'), findsOneWidget);
+    expect(find.text('LE-1007'), findsOneWidget);
     expect(find.text('Enquiry'), findsOneWidget);
   });
 
@@ -216,7 +216,7 @@ void main() {
           applicationCalls++;
           return ok({'applications': []});
         case 'submitApplication':
-          return ok({'leadId': 'RE1042'});
+          return ok({'leadId': 'LE-1042'});
         default:
           return ok(const {});
       }
@@ -232,7 +232,6 @@ void main() {
       city: 'Vadodara',
       pincode: '',
       capacityKw: 0,
-      projectType: 'Residential',
       discom: 'MGVCL',
     );
     await repo.applications();

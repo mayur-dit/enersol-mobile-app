@@ -81,7 +81,7 @@ class _ProjectProgressScreenState extends State<ProjectProgressScreen>
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: 'PROJECT PROGRESS',
+      title: 'Project Progress',
       child: RefreshIndicator(
         onRefresh: refreshNow,
         color: AppColors.ember,

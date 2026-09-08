@@ -18,6 +18,7 @@ import 'app_backdrop.dart';
 import 'app_drawer.dart';
 import 'app_header.dart';
 import 'confirm_dialog.dart';
+import 'page_title.dart';
 
 /// Footer destinations, in the order they appear.
 ///
@@ -66,12 +67,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   /// The handle pushed screens drive the tabs through — see [ShellController].
   late final ShellController _shell;
 
-  static const _titles = [
-    'HOME',
-    'APPLICATION',
-    'GENERATION',
-    'DOCUMENTS',
-    'SERVICE',
+  /// The heading each tab shows above its content, as [PageTitle] draws it.
+  ///
+  /// HOME IS NULL ON PURPOSE. It opens with the greeting and the customer's own
+  /// name, which is the heading of that screen already; a "Home" line above it
+  /// would be a title on top of a title. Every other tab needs naming, because
+  /// nothing inside it says which of the five you are on.
+  static const _titles = <String?>[
+    null,
+    'Application',
+    'Generation',
+    'Documents',
+    'Service',
   ];
 
   /// Where a tapped push lands. The backend writes the WEB app's paths, so the
@@ -210,13 +217,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           child: Column(
             children: [
               AppHeader(
-                title: _titles[_index],
                 showBack: !onHome,
                 onBack: _back,
                 unread: unread,
                 onAlertsTap: _openAlerts,
                 onMenuTap: () => _drawerKey.currentState?.openDrawer(),
               ),
+              // ABOVE THE STACK, NOT INSIDE EACH TAB. One heading that swaps
+              // its word is a single widget the five screens do not have to
+              // agree about, and it stays put while a tab scrolls under it.
+              if (_titles[_index] case final title?) PageTitle(title),
               Expanded(
                 // Every tab below stays mounted, so each needs to know whether
                 // it is the one being read before it re-reads anything.

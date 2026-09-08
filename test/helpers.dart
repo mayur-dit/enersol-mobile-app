@@ -118,7 +118,7 @@ Widget harness(Widget child, {CustomerRepository? repository}) {
 /// One entry of the portal's `applications` payload, with sensible defaults so
 /// a test names only the field it is about.
 Map<String, dynamic> applicationRow({
-  String reference = 'RE1007',
+  String reference = 'LE-1007',
   String status = 'Open',
   String stage = 'Site Survey',
   bool isConfirmed = false,

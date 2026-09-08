@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   SolarApplication app(List<AppStage> stages, {String stage = 'Design'}) =>
       SolarApplication(
-        reference: 'RE1007',
+        reference: 'LE-1007',
         status: 'Open',
         stage: stage,
         capacityKw: 5,

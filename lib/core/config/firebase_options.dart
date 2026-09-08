@@ -17,12 +17,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// service-account JSON, which lives only in the backend's `common
 /// .fcmServiceAccount` secret.
 ///
-/// TO FINISH SETUP: register an Android app (and an iOS app, when that build is
-/// wanted) under the same Firebase project and paste the values below. Until
-/// then [available] is false, `Firebase.initializeApp` is never called, and the
-/// app runs exactly as it does today — WebSocket notifications still arrive
-/// in-app, only the OS-level push is missing. This is deliberate: a missing
-/// console step must not be a crash on launch.
+/// Both the Android and the iOS app are registered now (2026-08-27), and the
+/// values below are the console's own — cross-check them against
+/// `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`,
+/// which carry the identical pairs for the native SDKs. If a platform is ever
+/// unregistered again, [available] goes false, `Firebase.initializeApp` is
+/// never called, and the app runs on the WebSocket alone rather than crashing
+/// on launch — a missing console step must not be a crash.
 class DefaultFirebaseOptions {
   const DefaultFirebaseOptions._();
 
@@ -32,23 +33,28 @@ class DefaultFirebaseOptions {
   static const String _storageBucket = 'enersol-2f5fe.firebasestorage.app';
 
   /// Firebase console → Project settings → Your apps → **Android app**, package
-  /// name `com.savainfosystems.enersol_customer`.
+  /// name `com.enersol.system` — which is why `applicationId` in
+  /// `android/app/build.gradle.kts` says that and not the old
+  /// `com.savainfosystems.enersol_customer`. Installations checks the app id
+  /// against the package the process actually runs as.
   ///
-  /// THESE MUST BE THE ANDROID APP'S VALUES, not the web app's. The pair below
-  /// was copied from the admin panel's `environment.ts`, which registers the
-  /// WEB app — the app id says `:web:`, and Firebase Installations refuses to
-  /// issue an FCM token to an Android process presenting a web app id. That is
-  /// why a closed phone never rang: registration failed on launch, the device
-  /// had no token, and the server had nothing to send to. [_androidReady] below
-  /// refuses to initialise on a web app id rather than failing again every
-  /// launch with an error only `flutter logs` would show.
-  static const String _androidAppId = '1:137907833728:web:d6b13b2e43599484b88f65';
-  static const String _androidApiKey = 'AIzaSyDp93h6UO_VaR6sSSR0zKx642SkKqix4GY';
+  /// THESE MUST BE THE ANDROID APP'S VALUES, not the web app's. What used to
+  /// sit here was the pair from the admin panel's `environment.ts`, which
+  /// registers the WEB app — the app id said `:web:`, and Firebase
+  /// Installations refuses to issue an FCM token to an Android process
+  /// presenting a web app id. That is why a closed phone never rang:
+  /// registration failed on launch, the device had no token, and the server had
+  /// nothing to send to. [_androidReady] below still refuses to initialise on a
+  /// web app id, so the mistake cannot come back silently.
+  static const String _androidAppId =
+      '1:137907833728:android:a7f8459b09246a95b88f65';
+  static const String _androidApiKey = 'AIzaSyAg91-9s7psEBnDnhdFfhP7BpgoAEOog7Q';
 
-  /// The same, for the iOS app.
-  static const String _iosAppId = '';
-  static const String _iosApiKey = '';
-  static const String _iosBundleId = 'com.savainfosystems.enersolCustomer';
+  /// The same, for the iOS app. The API key is a DIFFERENT one from Android's —
+  /// the console issues a key per platform, and they are not interchangeable.
+  static const String _iosAppId = '1:137907833728:ios:0d7368585ab7120eb88f65';
+  static const String _iosApiKey = 'AIzaSyDjH3kafSHe19ry5KA6HUUQAjrcRnSGSCc';
+  static const String _iosBundleId = 'com.enersol.system';
 
   /// Whether this platform has been registered in the console yet.
   static bool get available => _current != null;
@@ -70,9 +76,9 @@ class DefaultFirebaseOptions {
           'in-app over the WebSocket.';
     }
     if (Platform.isAndroid && !_androidReady) {
-      return 'Add the Android app (package com.savainfosystems.enersol_customer) '
-          'in the Firebase console and paste its App ID + API key into '
-          'firebase_options.dart — the values here belong to the web app.';
+      return 'Add the Android app (package com.enersol.system) in the Firebase '
+          'console and paste its App ID + API key into firebase_options.dart — '
+          'the values here belong to the web app.';
     }
     if (Platform.isIOS && (_iosAppId.isEmpty || _iosApiKey.isEmpty)) {
       return 'Register the iOS app in the Firebase console and paste its App ID '

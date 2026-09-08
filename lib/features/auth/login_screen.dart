@@ -28,8 +28,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _userFocus = FocusNode();
   final _passFocus = FocusNode();
 
-  String? _requiredUser(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'Enter your username' : null;
+  /// EMAIL, not a username. `/login` resolves an address to an account and
+  /// nothing else, so a name that is not an address cannot sign anybody in —
+  /// catching that here is the difference between "Enter your email address"
+  /// and a flat "Invalid username or password" from the server.
+  ///
+  /// Deliberately loose: the only thing worth catching at this end is a value
+  /// that is plainly not an address at all.
+  String? _requiredUser(String? v) {
+    final value = (v ?? '').trim();
+    if (value.isEmpty) return 'Enter your email address';
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value)) {
+      return 'Enter a valid email address';
+    }
+    return null;
+  }
   String? _requiredPass(String? v) =>
       (v == null || v.isEmpty) ? 'Enter your password' : null;
 
@@ -217,10 +230,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textInputAction: TextInputAction.next,
                                 autocorrect: false,
                                 enableSuggestions: false,
+                                keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
-                                  labelText: 'Username',
-                                  hintText: 'Your Enersol username',
-                                  prefixIcon: Icon(Icons.person_outline),
+                                  labelText: 'Email',
+                                  hintText: 'you@example.com',
+                                  prefixIcon: Icon(Icons.alternate_email),
                                 ),
                                 validator: _requiredUser,
                               ),

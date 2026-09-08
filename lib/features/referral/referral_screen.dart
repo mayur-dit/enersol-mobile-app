@@ -38,7 +38,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
   @override
   Widget build(BuildContext context) {
     return PageScaffold(
-      title: 'REFER & EARN',
+      title: 'Refer & Earn',
       // Every other list screen in the app already pulls to refresh; this one
       // was the one place a customer whose referral just converted had to
       // leave the screen and come back to see it.

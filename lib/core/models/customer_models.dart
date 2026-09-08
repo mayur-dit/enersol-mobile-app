@@ -122,11 +122,16 @@ class SolarApplication {
 
   int get completedCount => stages.where((s) => s.state == StageState.done).length;
 
+  /// For a confirmed job `status` now carries the office's board column, the
+  /// same value as [stage] — the separate execution status it used to hold was
+  /// retired and stopped moving, so serving it would have shown a commissioned
+  /// job as "Pending". Enquiries still send their own lifecycle here, which is
+  /// why 'won' and 'lost' stay in the arms below.
   LinearGradient get statusGradient => switch (status.toLowerCase()) {
-        'completed' || 'closed' => AppColors.leaf,
+        'handover' || 'completed' || 'closed' => AppColors.leaf,
         'cancelled' || 'rejected' || 'lost' => AppColors.rose,
         'on hold' => AppColors.violet,
-        'in progress' || 'won' => AppColors.brand,
+        'installation' || 'commissioning' || 'in progress' || 'won' => AppColors.brand,
         _ => AppColors.sky,
       };
 }

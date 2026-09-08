@@ -91,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final theme = Theme.of(context);
 
     return PageScaffold(
-      title: 'SETTINGS',
+      title: 'Settings',
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: pageInsets(context),

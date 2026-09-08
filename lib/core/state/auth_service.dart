@@ -144,9 +144,13 @@ class AuthService extends ChangeNotifier {
 
   // ── Login ────────────────────────────────────────────────────────────────
 
-  Future<void> login(String userName, String password) async {
+  /// [email] is the address typed in the sign-in box — the only identifier
+  /// `/login` accepts. The body field is still called `ens_userName_str`
+  /// because that is the wire contract the server publishes to all three
+  /// clients; only its meaning narrowed.
+  Future<void> login(String email, String password) async {
     final res = await _api.customApi('login', body: {
-      'ens_userName_str': userName.trim(),
+      'ens_userName_str': email.trim(),
       'ens_pass_str': password,
       'ens_appType_str': 'CUSTOMER',
     });

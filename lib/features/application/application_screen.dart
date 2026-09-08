@@ -564,7 +564,6 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
   final _capacityFocus = FocusNode();
   final _discomFocus = FocusNode();
 
-  String _projectType = 'Residential';
   bool _busy = false;
 
   /// The electricity board. Required on a lead, so it is loaded from the
@@ -573,9 +572,9 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
   List<String> _discoms = const [];
   bool _discomsLoading = true;
 
-  /// Exactly the values `elead_projectType_str` accepts — anything else is
-  /// rejected by the schema's enum.
-  static const _projectTypes = ['Residential', 'Commercial', 'Industrial'];
+  // Property type is NOT asked here. It classifies the JOB — one client can run
+  // a rooftop and a factory — so the office answers it on the project, which is
+  // also what carries the RE/IC id series. An enquiry is just an enquiry.
 
   @override
   bool get wantKeepAlive => true;
@@ -671,7 +670,6 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
                 city: _city.text.trim(),
                 pincode: _pincode.text.trim(),
                 capacityKw: double.tryParse(_capacity.text.trim()) ?? 0,
-                projectType: _projectType,
                 discom: _discom!,
                 notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
                 referralCode: _referral.text,
@@ -837,19 +835,6 @@ class _NewApplicationTabState extends State<_NewApplicationTab>
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _projectType,
-                      decoration: const InputDecoration(
-                        labelText: 'Property type',
-                        prefixIcon: Icon(Icons.apartment_outlined),
-                      ),
-                      items: _projectTypes
-                          .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => _projectType = v ?? 'Residential'),
                     ),
                   ],
                 ),

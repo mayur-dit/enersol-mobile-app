@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "137907833728",
+    "project_id": "enersol-2f5fe",
+    "storage_bucket": "enersol-2f5fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:137907833728:android:a7f8459b09246a95b88f65",
+        "android_client_info": {
+          "package_name": "com.enersol.system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAg91-9s7psEBnDnhdFfhP7BpgoAEOog7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

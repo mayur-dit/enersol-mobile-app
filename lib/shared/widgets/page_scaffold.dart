@@ -8,17 +8,19 @@ import '../../features/notifications/notifications_screen.dart';
 import 'app_backdrop.dart';
 import 'app_drawer.dart';
 import 'app_header.dart';
+import 'page_title.dart';
 
 /// Frame for a screen pushed on top of the shell (Profile, Settings, Alerts,
 /// Refer & Earn, Documents needed, Project progress).
 ///
-/// THE HEADER IS THE SAME ONE THE TABS GET — back, logo, screen name, bell and
-/// menu. It used to carry only the back arrow and the logo, on the reasoning
-/// that a pushed route owns no drawer; the effect was that half the app had two
-/// buttons in its header and half had none, and the sidebar became unreachable
-/// the moment you opened Settings. A pushed screen gets its OWN [AppDrawer]
-/// here — same contents, same order — and reaches the tabs underneath through
-/// [ShellController].
+/// THE HEADER IS THE SAME ONE THE TABS GET — back, logo, bell and menu — with
+/// the screen's name under it as the page's own [PageTitle] heading rather than
+/// as a caption inside the bar. It used to carry only the back arrow and the
+/// logo, on the reasoning that a pushed route owns no drawer; the effect was
+/// that half the app had two buttons in its header and half had none, and the
+/// sidebar became unreachable the moment you opened Settings. A pushed screen
+/// gets its OWN [AppDrawer] here — same contents, same order — and reaches the
+/// tabs underneath through [ShellController].
 class PageScaffold extends StatefulWidget {
   const PageScaffold({
     super.key,
@@ -80,12 +82,12 @@ class _PageScaffoldState extends State<PageScaffold> {
         child: Column(
           children: [
             AppHeader(
-              title: widget.title,
               showBack: true,
               unread: unread,
               onAlertsTap: widget.showAlerts ? _openAlerts : null,
               onMenuTap: () => _drawerKey.currentState?.openDrawer(),
             ),
+            PageTitle(widget.title),
             Expanded(child: widget.child),
           ],
         ),

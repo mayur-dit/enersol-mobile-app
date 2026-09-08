@@ -33,11 +33,11 @@ void main() {
     // put "Couldn't load" over a project that had come back perfectly well.
     await pumpHome(
       tester,
-      applications: [applicationRow(reference: 'RE1007')],
+      applications: [applicationRow(reference: 'LE-1007')],
       generationFails: true,
     );
 
-    expect(find.text('RE1007'), findsOneWidget);
+    expect(find.text('LE-1007'), findsOneWidget);
     expect(find.text("Couldn't load"), findsNothing);
     // The strip is simply absent, exactly as for a system not yet commissioned.
     expect(find.text('YOUR GENERATION'), findsNothing);

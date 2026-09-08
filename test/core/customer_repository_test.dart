@@ -19,7 +19,7 @@ void main() {
       expect(apps, hasLength(1));
 
       final a = apps.single;
-      expect(a.reference, 'RE1007');
+      expect(a.reference, 'LE-1007');
       expect(a.stage, 'Site Survey');
       expect(a.isConfirmed, isFalse);
       expect(a.capacityKw, 5);
@@ -115,7 +115,7 @@ void main() {
       final repo = repoWith((body) {
         action = '${body['action']}';
         path = '${body['city']}';
-        return ok({'leadId': 'RE1042'});
+        return ok({'leadId': 'LE-1042'});
       });
 
       final ref = await repo.submitApplication(
@@ -125,20 +125,19 @@ void main() {
         city: 'Vadodara',
         pincode: '390007',
         capacityKw: 0,
-        projectType: 'Residential',
         discom: 'MGVCL',
       );
 
       expect(action, 'submitApplication');
       expect(path, 'Vadodara');
-      expect(ref, 'RE1042');
+      expect(ref, 'LE-1042');
     });
 
     test('never sends a lead field the server writes itself', () async {
       Map<String, dynamic>? seen;
       final repo = repoWith((body) {
         seen = body;
-        return ok({'leadId': 'RE1042'});
+        return ok({'leadId': 'LE-1042'});
       });
       await repo.submitApplication(
         name: 'A',
@@ -147,7 +146,6 @@ void main() {
         city: 'V',
         pincode: '',
         capacityKw: 3,
-        projectType: 'Residential',
         discom: 'MGVCL',
       );
       // The whole point of the portal action: a customer token cannot set the
@@ -168,7 +166,6 @@ void main() {
         city: 'V',
         pincode: '',
         capacityKw: 0,
-        projectType: 'Residential',
         discom: 'MGVCL',
         notes: '   ',
       );

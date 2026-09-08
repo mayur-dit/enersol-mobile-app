@@ -73,7 +73,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No applications yet'), findsNothing);
-      expect(find.text('RE1007'), findsOneWidget);
+      expect(find.text('LE-1007'), findsOneWidget);
     });
   });
 

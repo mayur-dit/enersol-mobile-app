@@ -90,7 +90,7 @@ class _DocumentRequestsScreenState extends State<DocumentRequestsScreen>
     final theme = Theme.of(context);
 
     return PageScaffold(
-      title: 'DOCUMENTS NEEDED',
+      title: 'Documents Needed',
       child: RefreshIndicator(
         onRefresh: refreshNow,
         color: AppColors.ember,

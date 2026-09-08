@@ -10,7 +10,7 @@ void main() {
       Map<String, dynamic> sent = const {};
       final repo = repoWith((body) {
         if (body['action'] == 'submitApplication') sent = body;
-        return ok({'leadId': 'RE1042'});
+        return ok({'leadId': 'LE-1042'});
       });
 
       await repo.submitApplication(
@@ -20,7 +20,6 @@ void main() {
         city: 'Vadodara',
         pincode: '390007',
         capacityKw: 0,
-        projectType: 'Residential',
         discom: 'MGVCL',
         referralCode: ' ensl-2 ',
       );
@@ -32,7 +31,7 @@ void main() {
       Map<String, dynamic> sent = const {};
       final repo = repoWith((body) {
         if (body['action'] == 'submitApplication') sent = body;
-        return ok({'leadId': 'RE1042'});
+        return ok({'leadId': 'LE-1042'});
       });
 
       await repo.submitApplication(
@@ -42,7 +41,6 @@ void main() {
         city: 'Vadodara',
         pincode: '390007',
         capacityKw: 0,
-        projectType: 'Residential',
         discom: 'MGVCL',
       );
 

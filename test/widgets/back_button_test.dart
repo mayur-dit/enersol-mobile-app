@@ -1,6 +1,7 @@
 import 'package:enersol_customer/features/service/service_screen.dart';
 import 'package:enersol_customer/shared/widgets/app_drawer.dart';
 import 'package:enersol_customer/shared/widgets/app_shell.dart';
+import 'package:enersol_customer/shared/widgets/page_title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +51,26 @@ void main() {
   /// ones.
   Finder footerTab(IconData icon) => find.byIcon(icon);
 
+  /// The page's heading, told apart from the footer label of the same name.
+  ///
+  /// Since the screen name became a [PageTitle] instead of an all-caps caption
+  /// in the app bar, "Service" is a word in two places at once — the heading
+  /// and the footer destination — so a bare `find.text` matches both.
+  Finder heading(String text) =>
+      find.descendant(of: find.byType(PageTitle), matching: find.text(text));
+
+  /// "We are on Home, with nothing pushed over it."
+  ///
+  /// NOT `find.text('HOME')`. The screen's name used to be a caption in the app
+  /// bar and that string was the anchor; the name is a [PageTitle] in the page
+  /// now, and Home is the one tab that has none — its greeting is its heading.
+  /// The two facts together pin the shell down: no heading means Home, and no
+  /// back arrow means nothing is pushed over it.
+  void expectOnHome() {
+    expect(find.byType(PageTitle), findsNothing);
+    expect(find.byTooltip('Back'), findsNothing);
+  }
+
   /// The system back button, as the engine delivers it.
   Future<void> pressBack(WidgetTester tester) async {
     await tester.binding.handlePopRoute();
@@ -61,11 +82,11 @@ void main() {
 
     await tester.tap(footerTab(Icons.build_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('SERVICE'), findsOneWidget);
+    expect(heading('Service'), findsOneWidget);
 
     await pressBack(tester);
 
-    expect(find.text('HOME'), findsOneWidget);
+    expectOnHome();
     // …and it did NOT also ask to leave: one press, one thing undone.
     expect(find.text('Exit Enersol?'), findsNothing);
   });
@@ -83,7 +104,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Exit Enersol?'), findsNothing);
-    expect(find.text('HOME'), findsOneWidget);
+    expectOnHome();
     expect(calls, isEmpty);
   });
 
@@ -111,7 +132,7 @@ void main() {
     await pressBack(tester);
 
     expect(find.text('Exit Enersol?'), findsNothing);
-    expect(find.text('HOME'), findsOneWidget);
+    expectOnHome();
     expect(calls, isEmpty);
   });
 
@@ -127,7 +148,7 @@ void main() {
 
     expect(find.byType(AppDrawer), findsNothing);
     // The screen behind it is untouched, and the app is not asking to leave.
-    expect(find.text('HOME'), findsOneWidget);
+    expectOnHome();
     expect(find.text('Exit Enersol?'), findsNothing);
   });
 
@@ -137,12 +158,12 @@ void main() {
 
     await tester.tap(find.byTooltip('Alerts'));
     await tester.pumpAndSettle();
-    expect(find.text('ALERTS'), findsOneWidget);
+    expect(heading('Alerts'), findsOneWidget);
 
     await pressBack(tester);
 
-    expect(find.text('ALERTS'), findsNothing);
-    expect(find.text('HOME'), findsOneWidget);
+    expect(heading('Alerts'), findsNothing);
+    expectOnHome();
     expect(find.text('Exit Enersol?'), findsNothing);
   });
 

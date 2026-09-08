@@ -1,5 +1,7 @@
 import 'package:enersol_customer/shared/widgets/app_drawer.dart';
+import 'package:enersol_customer/shared/widgets/app_header.dart';
 import 'package:enersol_customer/shared/widgets/page_scaffold.dart';
+import 'package:enersol_customer/shared/widgets/page_title.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -116,11 +118,11 @@ void main() {
     testWidgets('carries the same bell and menu the tabs do', (tester) async {
       await tester.pumpWidget(
         harness(
-          const PageScaffold(title: 'SETTINGS', child: SizedBox.shrink()),
+          const PageScaffold(title: 'Settings', child: SizedBox.shrink()),
         ),
       );
 
-      expect(find.text('SETTINGS'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
       expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
       expect(find.byIcon(Icons.menu), findsOneWidget);
     });
@@ -131,7 +133,7 @@ void main() {
       await tester.pumpWidget(
         harness(
           const PageScaffold(
-            title: 'ALERTS',
+            title: 'Alerts',
             showAlerts: false,
             child: SizedBox.shrink(),
           ),
@@ -146,9 +148,33 @@ void main() {
       );
     });
 
+    // The name used to be a caption inside the bar, hung under the wordmark.
+    // It is the page's heading now, so it must sit BELOW the header rather than
+    // within it — that placement is the whole of the fix.
+    testWidgets('names the screen under the bar, not inside it', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        harness(
+          const PageScaffold(title: 'Settings', child: SizedBox.shrink()),
+        ),
+      );
+
+      expect(find.byType(PageTitle), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(AppHeader), matching: find.text('Settings')),
+        findsNothing,
+        reason: 'the screen name is back in the app bar',
+      );
+      expect(
+        tester.getRect(find.text('Settings')).top,
+        greaterThanOrEqualTo(tester.getRect(find.byType(AppHeader)).bottom),
+      );
+    });
+
     testWidgets('the menu opens a sidebar of its own', (tester) async {
       await tester.pumpWidget(
-        harness(const PageScaffold(title: 'PROFILE', child: SizedBox.shrink())),
+        harness(const PageScaffold(title: 'Profile', child: SizedBox.shrink())),
       );
 
       expect(find.byType(AppDrawer), findsNothing);

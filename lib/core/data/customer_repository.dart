@@ -200,7 +200,6 @@ class CustomerRepository {
     required String city,
     required String pincode,
     required double capacityKw,
-    required String projectType,
     required String discom,
     String? notes,
     String? referralCode,
@@ -222,7 +221,6 @@ class CustomerRepository {
       // A homeowner rarely knows their kW, so a blank form field files as 0 and
       // sales sets the real figure after the survey.
       'capacityKw': capacityKw,
-      'projectType': projectType,
       'discom': discom,
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
       if (code.isNotEmpty) 'referralCode': code,

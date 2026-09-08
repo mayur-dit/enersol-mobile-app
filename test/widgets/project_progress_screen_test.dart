@@ -12,7 +12,7 @@ void main() {
   /// The application the customer tapped to get here.
   Future<SolarApplication> anApplication() async {
     final repo = repoWith((_) => ok({
-          'applications': [applicationRow(reference: 'RE1007')],
+          'applications': [applicationRow(reference: 'LE-1007')],
         }));
     return (await repo.applications()).first;
   }
@@ -40,7 +40,7 @@ void main() {
         return applicationsFail
             ? failure('Not signed in', status: 401)
             : ok({
-                'applications': [applicationRow(reference: 'RE1007')],
+                'applications': [applicationRow(reference: 'LE-1007')],
               });
       }),
     ));

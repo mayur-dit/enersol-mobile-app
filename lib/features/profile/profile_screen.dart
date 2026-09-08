@@ -22,7 +22,7 @@ class ProfileScreen extends StatelessWidget {
 
     if (user == null) {
       return const PageScaffold(
-        title: 'PROFILE',
+        title: 'Profile',
         child: EmptyState(
           icon: Icons.person_off_outlined,
           title: 'Not signed in',
@@ -38,7 +38,7 @@ class ProfileScreen extends StatelessWidget {
     ].where((p) => p != null && p.trim().isNotEmpty).join(', ');
 
     return PageScaffold(
-      title: 'PROFILE',
+      title: 'Profile',
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: pageInsets(context),

@@ -3,6 +3,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Must come after the Android plugin. Processes app/google-services.json.
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -25,7 +27,14 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.savainfosystems.enersol_customer"
+        // MUST equal `client_info.android_client_info.package_name` in
+        // app/google-services.json (`com.enersol.system`) — that pairing is
+        // what Firebase Installations checks before it will issue an FCM
+        // token, and the google-services plugin fails the build outright if
+        // the two disagree. The Kotlin `namespace` above is only the R/
+        // BuildConfig package and is deliberately left alone, so MainActivity
+        // and the manifest's `.MainActivity` shorthand still resolve.
+        applicationId = "com.enersol.system"
         // flutter_secure_storage's encryptedSharedPreferences and local_auth's
         // biometric prompt both need API 23+; Flutter's own floor (24) clears it.
         minSdk = flutter.minSdkVersion

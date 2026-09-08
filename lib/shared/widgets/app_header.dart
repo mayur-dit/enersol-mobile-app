@@ -4,16 +4,15 @@ import '../../core/theme/app_theme.dart';
 import 'app_logo.dart';
 
 /// The app bar used on EVERY screen: back on the left, logo centred, alerts and
-/// menu on the right, and the screen's name on its own line underneath.
+/// menu on the right. ONE ROW, AND ONLY THE BRAND.
 ///
-/// TWO ROWS, NOT ONE STACK. The brand row is a fixed height that the logo and
-/// all three buttons share, and the caption sits in a second row below it. That
-/// separation is the whole point: while the buttons and the logo+caption were
-/// stacked as one block, the buttons — 48px of [IconButton] in a [Stack] that
-/// aligns to `topStart` by default — were pinned to the TOP of a 74px bar,
-/// riding 13px above its middle with dead space beneath them, and the caption
-/// had to be squeezed into whatever the logo left over. Now each row centres its
-/// own contents and neither can push the other around.
+/// THE SCREEN'S NAME IS NOT IN HERE. It used to sit on a second line under the
+/// logo — a small centred all-caps caption — and it read as an afterthought
+/// hung off the bottom of the brand bar rather than as the page's own heading:
+/// 16 logical pixels of gap above it, 7 below it, and the whole thing pinned
+/// under artwork it had nothing to do with. It now belongs to the page, drawn
+/// by [PageTitle] as the first line of the content, where a heading goes. The
+/// header is the brand and the three controls, nothing else.
 ///
 /// CENTRED AGAINST THE HEADER, NOT AGAINST WHAT IS LEFT OVER. The logo is a
 /// [Stack] child rather than a `Row`'s `Expanded`, because the two sides are not
@@ -37,7 +36,6 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     this.unread = 0,
     this.showBack,
     this.onBack,
-    this.title,
   });
 
   /// Opens the sidebar.
@@ -57,29 +55,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   /// than doing nothing.
   final VoidCallback? onBack;
 
-  /// Caption naming the current screen, shown under the logo.
-  final String? title;
-
   /// The line the logo and the buttons share. 48 is the tap target every
   /// [IconButton] wants; the extra 4 keeps the glyphs off the hairline.
   static const double _brandRow = 52;
-
-  /// Nominal height of the caption line, for [preferredSize] only — the row
-  /// itself is sized by its text, so the Settings font slider can grow it.
-  static const double _captionRow = 18;
-
-  /// Air between the caption and the hairline, so the name is not sitting on it.
-  static const double _bottomPad = 6;
 
   /// One button's worth of width. Held even when the button is absent.
   static const double _slot = 48;
 
   @override
-  Size get preferredSize => Size.fromHeight(
-    title == null
-        ? _brandRow + _bottomPad
-        : _brandRow + _captionRow + _bottomPad,
-  );
+  Size get preferredSize => const Size.fromHeight(_brandRow);
 
   @override
   Widget build(BuildContext context) {
@@ -90,12 +74,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     return SafeArea(
       bottom: false,
       child: Container(
-        // NO FIXED HEIGHT. [preferredSize] is the nominal figure; the bar
-        // itself is sized by its rows, so raising the Settings font slider
-        // makes the caption taller instead of clipping it against a hard 74.
+        height: _brandRow,
         // Symmetric left/right, so the centre of this box IS the centre of the
         // screen and the logo lands on it.
-        padding: EdgeInsets.fromLTRB(4, 0, 4, title == null ? 0 : _bottomPad),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
@@ -103,81 +85,50 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            SizedBox(
-              height: _brandRow,
-              child: Stack(
-                alignment: Alignment.center,
+            // Dead centre of the full width, and vertically centred on the
+            // same line the buttons occupy.
+            const IgnorePointer(child: AppLogo(height: 24, wordmarkOnly: true)),
+            Positioned.fill(
+              child: Row(
                 children: [
-                  // Dead centre of the full width, and vertically centred on
-                  // the same line the buttons occupy.
-                  const IgnorePointer(
-                    child: AppLogo(height: 24, wordmarkOnly: true),
+                  SizedBox(
+                    width: _slot,
+                    child: canPop
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new,
+                              size: 19,
+                            ),
+                            tooltip: 'Back',
+                            onPressed:
+                                onBack ??
+                                () => Navigator.of(context).maybePop(),
+                          )
+                        : null,
                   ),
-                  Positioned.fill(
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: _slot,
-                          child: canPop
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back_ios_new,
-                                    size: 19,
-                                  ),
-                                  tooltip: 'Back',
-                                  onPressed:
-                                      onBack ??
-                                      () => Navigator.of(context).maybePop(),
-                                )
-                              : null,
-                        ),
-                        const Spacer(),
-                        SizedBox(
-                          width: _slot,
-                          child: onAlertsTap == null
-                              ? null
-                              : _BellButton(
-                                  unread: unread,
-                                  onTap: onAlertsTap!,
-                                ),
-                        ),
-                        SizedBox(
-                          width: _slot,
-                          child: onMenuTap == null
-                              ? null
-                              : IconButton(
-                                  icon: const Icon(Icons.menu, size: 23),
-                                  tooltip: 'Menu',
-                                  onPressed: onMenuTap,
-                                ),
-                        ),
-                      ],
-                    ),
+                  const Spacer(),
+                  SizedBox(
+                    width: _slot,
+                    child: onAlertsTap == null
+                        ? null
+                        : _BellButton(unread: unread, onTap: onAlertsTap!),
+                  ),
+                  SizedBox(
+                    width: _slot,
+                    child: onMenuTap == null
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.menu, size: 23),
+                            tooltip: 'Menu',
+                            onPressed: onMenuTap,
+                          ),
                   ),
                 ],
               ),
             ),
-            if (title != null)
-              // Its own row, clear of the buttons, so it can use the full width
-              // and only has to stay off the screen edges.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  title!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    letterSpacing: 1.1,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? AppColors.darkText2 : AppColors.lightText2,
-                  ),
-                ),
-              ),
           ],
         ),
       ),

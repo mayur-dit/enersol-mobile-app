@@ -23,13 +23,11 @@ void main() {
     required bool bell,
     required bool menu,
     required bool back,
-    String? title,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           appBar: AppHeader(
-            title: title,
             showBack: back,
             onBack: () {},
             onAlertsTap: bell ? () {} : null,
@@ -85,13 +83,20 @@ void main() {
     expect((with_ - without).abs(), lessThan(tolerance));
   });
 
-  testWidgets('the title caption is centred under the logo', (tester) async {
+  // The header used to name the screen on a second line under the wordmark.
+  // It sat low and detached — 16 logical pixels of gap above it, 7 below — and
+  // read as a label on the brand bar rather than the page's heading. The name
+  // moved out to [PageTitle]; the bar is the brand and the three controls, and
+  // it must not grow a text line again.
+  testWidgets('carries no text of its own — the brand and the buttons only', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           appBar: AppHeader(
-            title: 'SETTINGS',
             showBack: true,
+            onBack: () {},
             onAlertsTap: () {},
             onMenuTap: () {},
           ),
@@ -100,9 +105,27 @@ void main() {
       ),
     );
 
-    final caption = tester.getCenter(find.text('SETTINGS'));
-    final screen = tester.getSize(find.byType(MaterialApp)).width / 2;
-    expect((caption.dx - screen).abs(), lessThan(tolerance));
+    expect(find.byType(Text), findsNothing);
+  });
+
+  testWidgets('is exactly the one 52px row tall', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppHeader(
+            showBack: true,
+            onBack: () {},
+            onAlertsTap: () {},
+            onMenuTap: () {},
+          ),
+          body: const SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    // No status bar in a test, so the SafeArea adds nothing and the bar is its
+    // brand row and the hairline under it.
+    expect(tester.getSize(find.byType(AppHeader)).height, 52);
   });
 
   // ── Vertical ────────────────────────────────────────────────────────────
@@ -111,15 +134,14 @@ void main() {
   // child of a [Stack], which aligns to `topStart` by default, so all three sat
   // 48px tall at the TOP of a 74px bar — 13px above its middle, with dead space
   // under them — while the logo centred itself against the logo+caption block.
-  // Nothing lined up with anything. The logo and the buttons now share one row
-  // and centre in it.
+  // Nothing lined up with anything. The logo and the buttons now share the one
+  // row the bar is made of.
 
-  Future<void> pumpHeader(WidgetTester tester, {String? title}) {
+  Future<void> pumpHeader(WidgetTester tester) {
     return tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           appBar: AppHeader(
-            title: title,
             showBack: true,
             onBack: () {},
             onAlertsTap: () {},
@@ -133,7 +155,7 @@ void main() {
   }
 
   testWidgets('every button sits on the same line as the logo', (tester) async {
-    await pumpHeader(tester, title: 'APPLICATION');
+    await pumpHeader(tester);
 
     final logo = tester.getCenter(find.byType(AppLogo)).dy;
     for (final icon in [
@@ -147,48 +169,6 @@ void main() {
         reason: '$icon is off the logo line',
       );
     }
-  });
-
-  testWidgets('the buttons keep that line when there is no caption', (
-    tester,
-  ) async {
-    await pumpHeader(tester);
-
-    final logo = tester.getCenter(find.byType(AppLogo)).dy;
-    expect(
-      (tester.getCenter(find.byIcon(Icons.menu)).dy - logo).abs(),
-      lessThan(tolerance),
-    );
-  });
-
-  testWidgets('the caption clears the logo instead of crowding it', (
-    tester,
-  ) async {
-    await pumpHeader(tester, title: 'APPLICATION');
-
-    final logo = tester.getRect(find.byType(AppLogo));
-    final caption = tester.getRect(find.text('APPLICATION'));
-    expect(
-      caption.top,
-      greaterThanOrEqualTo(logo.bottom),
-      reason: 'the screen name is overlapping the logo',
-    );
-  });
-
-  testWidgets('a long caption ellipsises rather than overflowing', (
-    tester,
-  ) async {
-    await pumpHeader(
-      tester,
-      title: 'A SCREEN WITH A VERY LONG NAME INDEED, FAR TOO LONG',
-    );
-
-    final bar = tester.getRect(find.byType(AppHeader));
-    final caption = tester.getRect(
-      find.text('A SCREEN WITH A VERY LONG NAME INDEED, FAR TOO LONG'),
-    );
-    expect(caption.width, lessThanOrEqualTo(bar.width));
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the bell shows the unread count, and hides it at zero', (
