@@ -127,6 +127,13 @@ class SolarApplication {
   /// retired and stopped moving, so serving it would have shown a commissioned
   /// job as "Pending". Enquiries still send their own lifecycle here, which is
   /// why 'won' and 'lost' stay in the arms below.
+  ///
+  /// A booked job's board is Pending → In Progress → Completed now, with a hold
+  /// and a cancellation either side; 'handover', 'installation' and
+  /// 'commissioning' were columns of the longer board it replaced and are kept
+  /// here for records the office has not restaged yet. No release was needed for
+  /// the change: every new column already had an arm, and 'pending' falls to the
+  /// neutral default, which is what it should look like.
   LinearGradient get statusGradient => switch (status.toLowerCase()) {
         'handover' || 'completed' || 'closed' => AppColors.leaf,
         'cancelled' || 'rejected' || 'lost' => AppColors.rose,

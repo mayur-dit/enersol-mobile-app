@@ -266,7 +266,7 @@ class CustomerRepository {
               title: '${d['ecd_title_str'] ?? 'Document'}',
               category: '${d['ecd_category_str'] ?? 'Documents'}',
               issuedOn: _date(d['ecd_issuedOn_date']) ??
-                  _date(d['createdAt']) ??
+                  _date(d['ecd_createdAt_date']) ??
                   DateTime.now(),
               url: _fileUrl(d['ecd_fileUrl_str']),
               fileName: _clean(d['ecd_fileName_str']),
@@ -304,10 +304,10 @@ class CustomerRepository {
         type: '${r['esr_type_str'] ?? 'Other'}',
         description: '${r['esr_description_str'] ?? ''}',
         status: status,
-        raisedOn: _date(r['createdAt']) ?? DateTime.now(),
+        raisedOn: _date(r['esr_createdAt_date']) ?? DateTime.now(),
         logs: logs,
         closedOn: (status == 'Resolved' || status == 'Cancelled')
-            ? (resolved ?? _date(r['updatedAt']))
+            ? (resolved ?? _date(r['esr_updatedAt_date']))
             : null,
       );
     }).toList();
@@ -356,7 +356,7 @@ class CustomerRepository {
               name: '${r['erf_name_str'] ?? ''}',
               status: '${r['erf_status_str'] ?? 'Enquiry'}',
               referredOn: _date(r['erf_referredOn_date']) ??
-                  _date(r['createdAt']) ??
+                  _date(r['erf_createdAt_date']) ??
                   DateTime.now(),
               pointsEarned: (_num(r['erf_pointsEarned_num']) ?? 0).round(),
             ))

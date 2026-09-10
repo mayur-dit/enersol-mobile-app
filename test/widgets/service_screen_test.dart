@@ -22,7 +22,7 @@ void main() {
         'esr_type_str': 'Low generation',
         'esr_description_str': 'Output dropped after the rain last week.',
         'esr_status_str': status,
-        'createdAt': '2026-08-01T04:30:00.000Z',
+        'esr_createdAt_date': '2026-08-01T04:30:00.000Z',
         'esr_logs_arr': const [],
       };
 

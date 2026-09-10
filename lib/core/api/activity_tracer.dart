@@ -19,7 +19,8 @@ class ActivityContext {
 
   final String action;
 
-  /// CREATE | UPDATE | DELETE | CUSTOM — matches `eact_opType_str`.
+  /// CREATE | UPDATE | DELETE | CUSTOM — an API Maker tracing header, not a
+  /// column: `ens_activity_logs` records the verb in `eact_action_str`.
   final String opType;
   final String module;
   final String? table;

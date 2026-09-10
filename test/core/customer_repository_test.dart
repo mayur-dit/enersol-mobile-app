@@ -218,7 +218,7 @@ void main() {
                 'esr_type_str': 'Low generation',
                 'esr_description_str': 'Output dropped after the rain.',
                 'esr_status_str': 'In Progress',
-                'createdAt': '2026-08-01T04:30:00.000Z',
+                'esr_createdAt_date': '2026-08-01T04:30:00.000Z',
                 'esr_logs_arr': [
                   {
                     'log_note_str': 'Engineer assigned.',
@@ -248,7 +248,7 @@ void main() {
                 'esr_requestNumber_str': 'SR-1',
                 'esr_status_str': 'Resolved',
                 'esr_resolvedAt_date': '2026-08-04T00:00:00.000Z',
-                'createdAt': '2026-08-01T00:00:00.000Z',
+                'esr_createdAt_date': '2026-08-01T00:00:00.000Z',
               },
             ],
           }));

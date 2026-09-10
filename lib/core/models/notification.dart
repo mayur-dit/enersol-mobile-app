@@ -37,7 +37,7 @@ class AppNotification {
       entity: s('enot_entity_str'),
       entityId: s('enot_entityId_str'),
       isRead: json['enot_isRead_bl'] == true,
-      createdAt: parseDate(s('createdAt')),
+      createdAt: parseDate(s('enot_createdAt_date')),
     );
   }
 
